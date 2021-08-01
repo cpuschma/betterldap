@@ -23,6 +23,8 @@ func (s *SimpleBindRequest) Marshal() (*ber.Packet, error) {
 }
 
 func (s *SimpleBindRequest) Unmarshal(packet *ber.Packet) error {
+	packet = packet.Children[1] // Skip MessageID
+
 	s.Version = packet.Children[0].Value.(int64)
 	s.DN = packet.Children[1].Value.(string)
 	s.Password = packet.Children[2].Value.(string)
@@ -37,13 +39,13 @@ func (c *Client) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
 	}
 
 	err = c.SendMessage(packet)
-	responsePacket, err := c.ReadPacket()
+	packet, err = c.ReadPacket()
 	if err != nil {
 		return nil, err
 	}
 
 	simpleBindResult := &SimpleBindResult{}
-	err = simpleBindResult.Unmarshal(responsePacket)
+	err = simpleBindResult.Unmarshal(packet)
 
 	return simpleBindResult, err
 }

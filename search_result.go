@@ -7,7 +7,7 @@ import (
 var _ IBerMessage = (*SearchResult)(nil)
 
 type SearchResult struct {
-	Entries []*Entry
+	Entries []*SearchResultEntry
 	//Referrals []string
 	//Controls []Control
 
@@ -39,26 +39,43 @@ func (s *SearchResult) Unmarshal(packet *ber.Packet) error {
 //
 //	SearchResultDone ::= [APPLICATION 5] LDAPResult
 
-var _ IBerMessage = (*Entry)(nil)
+var _ IBerMessage = (*SearchResultEntry)(nil)
 
-type Entry struct {
+type SearchResultEntry struct {
 	DN         string
 	Attributes []*PartialAttributeList
 }
 
-func (e Entry) Marshal() (*ber.Packet, error) {
+func (e *SearchResultEntry) Marshal() (*ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.TagOctetString, nil, "searchResultEntry")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, e.DN, "objectName"))
 
 	attributes := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "attributes")
-	// TODO: Append attributes
+	for _, v := range e.Attributes {
+		child, err := v.Marshal()
+		if err != nil {
+			return nil, err
+		}
+
+		attributes.AppendChild(child)
+	}
 	packet.AppendChild(attributes)
 
 	return packet, nil
 }
 
-func (e Entry) Unmarshal(packet *ber.Packet) error {
-	panic("implement me")
+func (e *SearchResultEntry) Unmarshal(packet *ber.Packet) (err error) {
+	packet = packet.Children[1] // Skip MessageID
+
+	e.DN = packet.Children[0].Value.(string)
+	e.Attributes = make([]*PartialAttributeList, len(packet.Children[1].Children))
+	for i, attribute := range packet.Children[1].Children {
+		if err = e.Attributes[i].Unmarshal(attribute); err != nil {
+			return err
+		}
+	}
+
+	return
 }
 
 ///////////////////////////////////////////////////////
@@ -80,7 +97,7 @@ func (e *PartialAttributeList) Marshal() (*ber.Packet, error) {
 	}
 	packet.AppendChild(attributes)
 
-	return nil, nil
+	return packet, nil
 }
 
 func (e *PartialAttributeList) Unmarshal(packet *ber.Packet) error {
@@ -95,10 +112,20 @@ func (e *PartialAttributeList) Unmarshal(packet *ber.Packet) error {
 	return nil
 }
 
-//
+///////////////////////////////////////////////////////
 
 var _ IBerMessage = (*SearchResultDone)(nil)
 
 type SearchResultDone struct {
 	LDAPResult
+}
+
+func (s *SearchResultDone) Marshal() (*ber.Packet, error) {
+	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchResultDone, nil, "SearchResultDone")
+	s.AddPackets(packet)
+	return packet, nil
+}
+
+func (s *SearchResultDone) Unmarshal(packet *ber.Packet) error {
+	return nil
 }

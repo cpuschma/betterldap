@@ -2,16 +2,20 @@ package main
 
 import (
 	"betterldap"
-	"fmt"
+	"betterldap/internal/debug"
+	ber "github.com/go-asn1-ber/asn1-ber"
+	"io/ioutil"
 	"net"
 	"time"
 )
 
 func main() {
-	//data, _ := ioutil.ReadFile("./cmd/search_result_entry.bin")
-	//packet := ber.DecodePacket(data)
-	//println(packet)
-	//return
+	data, _ := ioutil.ReadFile("./cmd/search_request_result.bin")
+	packet := ber.DecodePacket(data)
+
+	var s = new(betterldap.SearchResult)
+	debug.Log(s.Unmarshal(packet))
+	return
 
 	conn, err := betterldap.Dial("tcp", "127.0.0.1:389", betterldap.ConnectionOptions{
 		Dialer: net.Dialer{
@@ -19,7 +23,8 @@ func main() {
 		},
 	})
 	if err != nil {
-		panic(err)
+		debug.Log(err)
+		return
 	}
 
 	result, err := conn.Bind(&betterldap.SimpleBindRequest{
@@ -29,7 +34,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%#v\n", result)
+	debug.Logf("%#v\n", result)
 
 	searchRequest := &betterldap.SearchRequest{
 		BaseDN:       "ou=Users,dc=my-company,dc=com",

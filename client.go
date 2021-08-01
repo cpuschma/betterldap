@@ -78,21 +78,57 @@ func (c *Client) ReadPacket() (*ber.Packet, error) {
 		return nil, err
 	}
 
-	return packet.Children[1], nil // Skip MessageID
+	packet.Children[0].Description = "MessageID"
+	return packet, nil
 }
+
+// https://datatracker.ietf.org/doc/html/rfc4511#section-4.1.1
+//	LDAPMessage ::= SEQUENCE {
+//		messageID       MessageID,
+//		protocolOp      CHOICE {
+//		bindRequest           BindRequest,
+//		bindResponse          BindResponse,
+//		unbindRequest         UnbindRequest,
+//		searchRequest         SearchRequest,
+//		searchResEntry        SearchResultEntry,
+//		searchResDone         SearchResultDone,
+//		searchResRef          SearchResultReference,
+//		modifyRequest         ModifyRequest,
+//		modifyResponse        ModifyResponse,
+//		addRequest            AddRequest,
+//		addResponse           AddResponse,
+//		delRequest            DelRequest,
+//		delResponse           DelResponse,
+//		modDNRequest          ModifyDNRequest,
+//		modDNResponse         ModifyDNResponse,
+//		compareRequest        CompareRequest,
+//		compareResponse       CompareResponse,
+//		abandonRequest        AbandonRequest,
+//		extendedReq           ExtendedRequest,
+//		extendedResp          ExtendedResponse,
+//		...,
+//		intermediateResponse  IntermediateResponse },
+//		controls       [0] Controls OPTIONAL }
 
 // EncapsulatePacket
 func (c *Client) EncapsulatePacket(packet *ber.Packet) *ber.Packet {
-	envelope := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Request")
-	envelope.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, c.getNextMessageID(), "MessageID"))
-	envelope.AppendChild(packet)
+	envelope := &Message{
+		MessageID: c.getNextMessageID(),
+		Packet:    packet,
+		Controls:  nil,
+	}
 
-	return envelope
+	p, _ := envelope.Marshal()
+	return p
 }
 
 // getNextMessageID
 func (c *Client) getNextMessageID() (i int32) {
 	c.mu.Lock()
+	// It doesn't really matter if we overflow this integer.
+	// If ONE client really exceeds 2.147.483.647 active messages
+	// then overflowing one integer is probably your least problem..
+	// See: https://datatracker.ietf.org/doc/html/rfc4511#section-4.1.1
 	c.messageID++
 	i = c.messageID
 	c.mu.Unlock()

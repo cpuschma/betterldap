@@ -1,3 +1,6 @@
+//go:build debug
+// +build debug
+
 package debug
 
 import (
@@ -5,7 +8,7 @@ import (
 	"os"
 )
 
-var logger = log.New(os.Stdout, "[DEBUG] ", 0)
+var logger = log.New(os.Stdout, "[DEBUG] ", log.LstdFlags)
 
 func Log(args ...interface{}) {
 	logger.Println(args...)

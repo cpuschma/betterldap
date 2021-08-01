@@ -32,6 +32,8 @@ func (l *LDAPResult) Marshal() (*ber.Packet, error) {
 }
 
 func (l *LDAPResult) Unmarshal(packet *ber.Packet) error {
+	packet = packet.Children[1] // Skip MessageID
+
 	l.ResultCode = packet.Children[0].Value.(int64)
 	l.MatchedDN = packet.Children[1].Value.(string)
 	l.ErrorMessage = packet.Children[2].Value.(string)

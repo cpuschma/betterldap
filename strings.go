@@ -1,6 +1,6 @@
 package betterldap
 
-var hex = "0123456789abcdef"
+const hexFilter = "0123456789abcdef"
 
 func mustEscape(c byte) bool {
 	return c > 0x7f || c == '(' || c == ')' || c == '\\' || c == '*' || c == 0
@@ -24,13 +24,14 @@ func EscapeFilter(filter string) string {
 		c := filter[i]
 		if mustEscape(c) {
 			buf[j+0] = '\\'
-			buf[j+1] = hex[c>>4]
-			buf[j+2] = hex[c&0xf]
+			buf[j+1] = hexFilter[c>>4]
+			buf[j+2] = hexFilter[c&0xf]
 			j += 3
 		} else {
 			buf[j] = c
 			j++
 		}
 	}
+
 	return string(buf)
 }

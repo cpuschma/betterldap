@@ -28,10 +28,10 @@ var _ IBerMessage = (*SearchRequest)(nil)
 
 type SearchRequest struct {
 	BaseDN       string
-	Scope        uint64
-	DerefAliases uint64
-	SizeLimit    uint64
-	TimeLimit    uint64
+	Scope        int64
+	DerefAliases int64
+	SizeLimit    int64
+	TimeLimit    int64
 	TypesOnly    bool
 	Filter       string
 	Attributes   []string
@@ -72,8 +72,28 @@ func (s *SearchRequest) Marshal() (*ber.Packet, error) {
 	return packet, nil
 }
 
-func (s *SearchRequest) Unmarshal(packet *ber.Packet) error {
-	return nil
+func (s *SearchRequest) Unmarshal(packet *ber.Packet) (err error) {
+	searchPacket := packet.Children[1] // Skip MessageID
+
+	s.BaseDN = searchPacket.Children[0].Value.(string)
+	s.Scope = searchPacket.Children[1].Value.(int64)
+	s.DerefAliases = searchPacket.Children[2].Value.(int64)
+	s.SizeLimit = searchPacket.Children[3].Value.(int64)
+	s.TimeLimit = searchPacket.Children[4].Value.(int64)
+	s.TypesOnly = searchPacket.Children[5].Value.(bool)
+
+	filter, err := DecompileFilter(searchPacket.Children[6])
+	if err != nil {
+		return err
+	}
+	s.Filter = filter
+
+	s.Attributes = make([]string, len(searchPacket.Children[7].Children))
+	for i, attribute := range searchPacket.Children[7].Children {
+		s.Attributes[i] = attribute.Value.(string)
+	}
+
+	return
 }
 
 func (c *Client) Search(req *SearchRequest) (*SearchResult, error) {
@@ -89,18 +109,10 @@ func (c *Client) Search(req *SearchRequest) (*SearchResult, error) {
 		if err != nil {
 			return nil, err
 		}
+		_ = responsePacket
+		// TODO: Create SearchResult and scan entries
 
-		switch tag := responsePacket.Tag; tag {
-		case ApplicationSearchResultEntry:
-			fmt.Println("ApplicationSearchResultEntry")
-			break
-		case ApplicationSearchResultDone:
-			fmt.Println("ApplicationSearchResultDone")
-			break
-		default:
-			fmt.Println("Unknown", tag)
-			break
-		}
+		break
 	}
 
 	return searchResult, nil

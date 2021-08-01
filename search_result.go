@@ -5,9 +5,6 @@ import (
 )
 
 var _ IBerMessage = (*SearchResult)(nil)
-var _ IBerMessage = (*Entry)(nil)
-var _ IBerMessage = (*PartialAttributeList)(nil)
-var _ IBerMessage = (*SearchResultDone)(nil)
 
 type SearchResult struct {
 	Entries []*Entry
@@ -17,15 +14,11 @@ type SearchResult struct {
 	LDAPResult
 }
 
-type SearchResultDone struct {
-	LDAPResult
-}
-
-func (s *SearchResult) Builder() (*ber.Packet, error) {
+func (s *SearchResult) Marshal() (*ber.Packet, error) {
 	return nil, nil
 }
 
-func (s *SearchResult) Decoder(packet *ber.Packet) error {
+func (s *SearchResult) Unmarshal(packet *ber.Packet) error {
 	return nil
 }
 
@@ -46,12 +39,14 @@ func (s *SearchResult) Decoder(packet *ber.Packet) error {
 //
 //	SearchResultDone ::= [APPLICATION 5] LDAPResult
 
+var _ IBerMessage = (*Entry)(nil)
+
 type Entry struct {
 	DN         string
 	Attributes []*PartialAttributeList
 }
 
-func (e Entry) Builder() (*ber.Packet, error) {
+func (e Entry) Marshal() (*ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.TagOctetString, nil, "searchResultEntry")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, e.DN, "objectName"))
 
@@ -62,18 +57,20 @@ func (e Entry) Builder() (*ber.Packet, error) {
 	return packet, nil
 }
 
-func (e Entry) Decoder(packet *ber.Packet) error {
+func (e Entry) Unmarshal(packet *ber.Packet) error {
 	panic("implement me")
 }
 
 ///////////////////////////////////////////////////////
+
+var _ IBerMessage = (*PartialAttributeList)(nil)
 
 type PartialAttributeList struct {
 	Name   string
 	Values []string
 }
 
-func (e *PartialAttributeList) Builder() (*ber.Packet, error) {
+func (e *PartialAttributeList) Marshal() (*ber.Packet, error) {
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "partialAttributeList")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, e.Name, "type"))
 
@@ -86,7 +83,7 @@ func (e *PartialAttributeList) Builder() (*ber.Packet, error) {
 	return nil, nil
 }
 
-func (e *PartialAttributeList) Decoder(packet *ber.Packet) error {
+func (e *PartialAttributeList) Unmarshal(packet *ber.Packet) error {
 	e.Name = packet.Children[0].Value.(string) // Name
 	// Pre-allocate, since we can determine the length at this point
 	e.Values = make([]string, len(packet.Children[1].Children))
@@ -96,4 +93,12 @@ func (e *PartialAttributeList) Decoder(packet *ber.Packet) error {
 	}
 
 	return nil
+}
+
+//
+
+var _ IBerMessage = (*SearchResultDone)(nil)
+
+type SearchResultDone struct {
+	LDAPResult
 }

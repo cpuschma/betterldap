@@ -37,7 +37,7 @@ type SearchRequest struct {
 	Attributes   []string
 }
 
-func (s *SearchRequest) Builder() (*ber.Packet, error) {
+func (s *SearchRequest) Marshal() (*ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchRequest, nil, "Search Request")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, s.BaseDN, "Base DN"))
 	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, s.Scope, "Scope"))
@@ -72,20 +72,18 @@ func (s *SearchRequest) Builder() (*ber.Packet, error) {
 	return packet, nil
 }
 
-func (s *SearchRequest) Decoder(packet *ber.Packet) error {
+func (s *SearchRequest) Unmarshal(packet *ber.Packet) error {
 	return nil
 }
 
 func (c *Client) Search(req *SearchRequest) (*SearchResult, error) {
-	packet, err := Marshal(req)
+	packet, err := req.Marshal()
 	if err != nil {
 		return nil, fmt.Errorf("marshal of search request failed: %w", err)
 	}
 
 	err = c.SendMessage(packet)
-	searchResult := &SearchResult{
-
-	}
+	searchResult := &SearchResult{}
 	for {
 		responsePacket, err := c.ReadPacket()
 		if err != nil {

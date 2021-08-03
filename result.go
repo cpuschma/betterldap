@@ -27,13 +27,11 @@ func (l *LDAPResult) AddPackets(parent *ber.Packet) {
 	}
 }
 
-func (l *LDAPResult) Marshal() (*ber.Packet, error) {
-	return nil, nil
+func (l *LDAPResult) Marshal() (*ber.Packet, *ber.Packet, error) {
+	return nil, nil, nil
 }
 
-func (l *LDAPResult) Unmarshal(packet *ber.Packet) error {
-	packet = packet.Children[1] // Skip MessageID
-
+func (l *LDAPResult) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
 	l.ResultCode = packet.Children[0].Value.(int64)
 	l.MatchedDN = packet.Children[1].Value.(string)
 	l.ErrorMessage = packet.Children[2].Value.(string)

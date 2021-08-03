@@ -2,36 +2,41 @@ package betterldap
 
 import (
 	"errors"
+	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 )
 
-var _ IBerMessage = (*Message)(nil)
-
-type Message struct {
+type Envelope struct {
 	MessageID int32
 	Packet    *ber.Packet
-	Controls  interface{} // TODO!
+	Controls  *ber.Packet
 }
 
-func (m *Message) Marshal() (*ber.Packet, error) {
+func (m *Envelope) Marshal() *ber.Packet {
 	envelope := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "LDAP Request")
 	envelope.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, m.MessageID, "MessageID"))
 	envelope.AppendChild(m.Packet) // protocolOp
 
-	return envelope, nil
+	// TODO: Implement controls
+
+	return envelope
 }
 
-func (m *Message) Unmarshal(packet *ber.Packet) error {
+func (m *Envelope) Unmarshal(packet *ber.Packet) error {
 	childrenCount := len(packet.Children)
 	if childrenCount < 2 {
 		return errors.New("envelope has less than two child packets")
 	}
 
-	m.MessageID = int32(packet.Children[0].Value.(int64))
-	m.Packet = packet.Children[1]
+	var i int64
+	if err := parseInt64(packet, 0, &i); err != nil {
+		return fmt.Errorf("%w: missing or incorrect messageID in envelope", err)
+	}
 
+	m.MessageID = int32(i)
+	m.Packet = packet.Children[1]
 	if childrenCount > 2 {
-		// TODO: Implement controls
+		m.Controls = packet.Children[2]
 	}
 
 	return nil

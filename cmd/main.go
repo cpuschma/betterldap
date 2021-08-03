@@ -2,47 +2,40 @@ package main
 
 import (
 	"betterldap"
-	"betterldap/internal/debug"
-	ber "github.com/go-asn1-ber/asn1-ber"
-	"io/ioutil"
-	"net"
+	"fmt"
 	"time"
 )
 
 func main() {
-	data, _ := ioutil.ReadFile("./cmd/search_request_result.bin")
-	packet := ber.DecodePacket(data)
+	//data, _ := ioutil.ReadFile("./testdata/searchRequest_ou.bin")
+	//packet := ber.DecodePacket(data)
+	//
+	//envelope := &betterldap.Envelope{}
+	//envelope.Unmarshal(packet)
+	//
+	//searchRequest := &betterldap.SearchRequest{}
+	//fmt.Println(searchRequest.Unmarshal(envelope.Packet, envelope.Controls))
+	//debug.Logf("%#v\n", packet)
+	//return
 
-	var s = new(betterldap.SearchResult)
-	debug.Log(s.Unmarshal(packet))
-	return
-
-	conn, err := betterldap.Dial("tcp", "127.0.0.1:389", betterldap.ConnectionOptions{
-		Dialer: net.Dialer{
-			Timeout: 5 * time.Second,
-		},
-	})
-	if err != nil {
-		debug.Log(err)
-		return
-	}
-
-	result, err := conn.Bind(&betterldap.SimpleBindRequest{
-		DN:       "cn=admin,dc=my-company,dc=com",
-		Password: "robin123!",
-	})
+	conn, err := betterldap.Dial("tcp", "10.203.156.32:389", betterldap.ConnectionOptions{})
 	if err != nil {
 		panic(err)
 	}
-	debug.Logf("%#v\n", result)
 
-	searchRequest := &betterldap.SearchRequest{
-		BaseDN:       "ou=Users,dc=my-company,dc=com",
-		Scope:        betterldap.ScopeWholeSubtree,
-		DerefAliases: betterldap.NeverDerefAliases,
-		TypesOnly:    false,
-		Attributes:   []string{"cn"},
-		Filter:       "(objectclass=*)",
-	}
-	conn.Search(searchRequest)
+	go conn.ReadIncomingMessages()
+
+	fmt.Printf("Bind: ")
+	fmt.Println(conn.Bind(&betterldap.SimpleBindRequest{
+		Version:  3,
+		DN:       "christopher.puschmann@login.ds.signintra.com",
+		Password: "5R@9mC%SaRdHb2",
+	}))
+
+	fmt.Println("sleep 2sec")
+	time.Sleep(2 * time.Second)
+	fmt.Println(conn.Close())
+	time.Sleep(2 * time.Second)
+	fmt.Println(conn.Close())
+
 }

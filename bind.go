@@ -1,6 +1,7 @@
 package betterldap
 
 import (
+	"betterldap/internal/debug"
 	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 )
@@ -13,58 +14,50 @@ type SimpleBindRequest struct {
 	Password string
 }
 
-func (s *SimpleBindRequest) Marshal() (*ber.Packet, error) {
+func (s *SimpleBindRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationBindRequest, nil, "Simple Bind Request")
 	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, 3, "version"))
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, s.DN, "name"))
 	packet.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, ber.TagEOC, s.Password, "authentication"))
 
-	return packet, nil
+	return packet, nil, nil
 }
 
-func (s *SimpleBindRequest) Unmarshal(packet *ber.Packet) error {
-	packet = packet.Children[1] // Skip MessageID
-
+func (s *SimpleBindRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error) {
 	s.Version = packet.Children[0].Value.(int64)
-	s.DN = packet.Children[1].Value.(string)
-	s.Password = packet.Children[2].Value.(string)
+	if err = parseString(packet, 1, &s.DN); err != nil {
+		return
+	}
+	if err = parseString(packet, 2, &s.Password); err != nil {
+		return
+	}
 
 	return nil
 }
 
-func (c *Client) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
-	packet, err := req.Marshal()
+func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
+	packet, _, err := req.Marshal()
 	if err != nil {
 		return nil, fmt.Errorf("marshal of bind request failed: %w", err)
 	}
 
-	err = c.SendMessage(packet)
-	packet, err = c.ReadPacket()
+	envelope, handler := c.newMessage(packet, nil)
+	c.RegisterMessage(handler)
+	defer c.UnregisterMessage(handler)
+
+	debug.Log("Bind(): Sending bind request")
+	err = c.SendMessage(envelope.Marshal())
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
+	envelope, err = handler.Receive()
 	simpleBindResult := &SimpleBindResult{}
-	err = simpleBindResult.Unmarshal(packet)
+	err = simpleBindResult.Unmarshal(envelope.Packet, envelope.Controls)
+
+	if simpleBindResult.ResultCode == 0 {
+		debug.Log("Bind successfull!! :)")
+	}
 
 	return simpleBindResult, err
-}
-
-///////////////////////////////////////////////////
-
-var _ IBerMessage = (*SimpleBindResult)(nil)
-
-type SimpleBindResult struct {
-	LDAPResult
-}
-
-func (s *SimpleBindResult) Marshal() (*ber.Packet, error) {
-	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationBindResponse, nil, "Simple Bind Response")
-	s.AddPackets(packet)
-
-	return packet, nil
-}
-
-func (s *SimpleBindResult) Unmarshal(packet *ber.Packet) error {
-	return s.LDAPResult.Unmarshal(packet)
 }

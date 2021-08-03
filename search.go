@@ -20,8 +20,8 @@ var _ IBerMessage = (*SearchRequest)(nil)
 //		derefInSearching        (1),
 //		derefFindingBaseObj     (2),
 //		derefAlways             (3) },
-//		sizeLimit       INTEGER (0 ..  maxInt),
-//		timeLimit       INTEGER (0 ..  maxInt),
+//		sizeLimit       INTEGER ,
+//		timeLimit       INTEGER,
 //		typesOnly       BOOLEAN,
 //		filter          Filter,
 //		attributes      AttributeSelection }
@@ -37,7 +37,7 @@ type SearchRequest struct {
 	Attributes   []string
 }
 
-func (s *SearchRequest) Marshal() (*ber.Packet, error) {
+func (s *SearchRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchRequest, nil, "Search Request")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, s.BaseDN, "Base DN"))
 	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, s.Scope, "Scope"))
@@ -48,7 +48,7 @@ func (s *SearchRequest) Marshal() (*ber.Packet, error) {
 
 	filterPacket, err := CompileFilter(s.Filter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	packet.AppendChild(filterPacket)
 
@@ -69,35 +69,33 @@ func (s *SearchRequest) Marshal() (*ber.Packet, error) {
 	}
 
 	packet.AppendChild(attributes)
-	return packet, nil
+	return packet, nil, nil
 }
 
-func (s *SearchRequest) Unmarshal(packet *ber.Packet) (err error) {
-	searchPacket := packet.Children[1] // Skip MessageID
+func (s *SearchRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error) {
+	s.BaseDN = packet.Children[0].Value.(string)
+	s.Scope = packet.Children[1].Value.(int64)
+	s.DerefAliases = packet.Children[2].Value.(int64)
+	s.SizeLimit = packet.Children[3].Value.(int64)
+	s.TimeLimit = packet.Children[4].Value.(int64)
+	s.TypesOnly = packet.Children[5].Value.(bool)
 
-	s.BaseDN = searchPacket.Children[0].Value.(string)
-	s.Scope = searchPacket.Children[1].Value.(int64)
-	s.DerefAliases = searchPacket.Children[2].Value.(int64)
-	s.SizeLimit = searchPacket.Children[3].Value.(int64)
-	s.TimeLimit = searchPacket.Children[4].Value.(int64)
-	s.TypesOnly = searchPacket.Children[5].Value.(bool)
-
-	filter, err := DecompileFilter(searchPacket.Children[6])
+	filter, err := DecompileFilter(packet.Children[6])
 	if err != nil {
 		return err
 	}
 	s.Filter = filter
 
-	s.Attributes = make([]string, len(searchPacket.Children[7].Children))
-	for i, attribute := range searchPacket.Children[7].Children {
+	s.Attributes = make([]string, len(packet.Children[7].Children))
+	for i, attribute := range packet.Children[7].Children {
 		s.Attributes[i] = attribute.Value.(string)
 	}
 
 	return
 }
 
-func (c *Client) Search(req *SearchRequest) (*SearchResult, error) {
-	packet, err := req.Marshal()
+func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
+	packet, _, err := req.Marshal()
 	if err != nil {
 		return nil, fmt.Errorf("marshal of search request failed: %w", err)
 	}

@@ -5,6 +5,6 @@ import (
 )
 
 type IBerMessage interface {
-	Marshal() (*ber.Packet, error)
-	Unmarshal(*ber.Packet) error
+	Marshal() (messageOp *ber.Packet, controls *ber.Packet, err error)
+	Unmarshal(messageOp *ber.Packet, controls *ber.Packet) error
 }

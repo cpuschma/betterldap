@@ -6,10 +6,10 @@ var _ IBerMessage = (*UnbindRequest)(nil)
 
 type UnbindRequest struct{}
 
-func (u UnbindRequest) Marshal() (*ber.Packet, error) {
-	return ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationUnbindRequest, nil, "unbindRequest"), nil
+func (u UnbindRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
+	return ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationUnbindRequest, nil, "unbindRequest"), nil, nil
 }
 
-func (u UnbindRequest) Unmarshal(packet *ber.Packet) error {
+func (u UnbindRequest) Unmarshal(messageOp *ber.Packet, controls *ber.Packet) error {
 	return nil
 }

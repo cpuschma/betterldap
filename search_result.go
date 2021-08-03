@@ -14,11 +14,11 @@ type SearchResult struct {
 	LDAPResult
 }
 
-func (s *SearchResult) Marshal() (*ber.Packet, error) {
-	return nil, nil
+func (s *SearchResult) Marshal() (*ber.Packet, *ber.Packet, error) {
+	return nil, nil, nil
 }
 
-func (s *SearchResult) Unmarshal(packet *ber.Packet) error {
+func (s *SearchResult) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
 	return nil
 }
 
@@ -43,34 +43,32 @@ var _ IBerMessage = (*SearchResultEntry)(nil)
 
 type SearchResultEntry struct {
 	DN         string
-	Attributes []*PartialAttributeList
+	Attributes []*PartialAttribute
 }
 
-func (e *SearchResultEntry) Marshal() (*ber.Packet, error) {
+func (e *SearchResultEntry) Marshal() (*ber.Packet, *ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.TagOctetString, nil, "searchResultEntry")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, e.DN, "objectName"))
 
 	attributes := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "attributes")
 	for _, v := range e.Attributes {
-		child, err := v.Marshal()
+		child, _, err := v.Marshal()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		attributes.AppendChild(child)
 	}
 	packet.AppendChild(attributes)
 
-	return packet, nil
+	return packet, nil, nil
 }
 
-func (e *SearchResultEntry) Unmarshal(packet *ber.Packet) (err error) {
-	packet = packet.Children[1] // Skip MessageID
-
+func (e *SearchResultEntry) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error) {
 	e.DN = packet.Children[0].Value.(string)
-	e.Attributes = make([]*PartialAttributeList, len(packet.Children[1].Children))
+	e.Attributes = make([]*PartialAttribute, len(packet.Children[1].Children))
 	for i, attribute := range packet.Children[1].Children {
-		if err = e.Attributes[i].Unmarshal(attribute); err != nil {
+		if err = e.Attributes[i].Unmarshal(attribute, nil); err != nil {
 			return err
 		}
 	}
@@ -80,14 +78,14 @@ func (e *SearchResultEntry) Unmarshal(packet *ber.Packet) (err error) {
 
 ///////////////////////////////////////////////////////
 
-var _ IBerMessage = (*PartialAttributeList)(nil)
+var _ IBerMessage = (*PartialAttribute)(nil)
 
-type PartialAttributeList struct {
+type PartialAttribute struct {
 	Name   string
 	Values []string
 }
 
-func (e *PartialAttributeList) Marshal() (*ber.Packet, error) {
+func (e *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "partialAttributeList")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, e.Name, "type"))
 
@@ -97,10 +95,10 @@ func (e *PartialAttributeList) Marshal() (*ber.Packet, error) {
 	}
 	packet.AppendChild(attributes)
 
-	return packet, nil
+	return packet, nil, nil
 }
 
-func (e *PartialAttributeList) Unmarshal(packet *ber.Packet) error {
+func (e *PartialAttribute) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
 	e.Name = packet.Children[0].Value.(string) // Name
 	// Pre-allocate, since we can determine the length at this point
 	e.Values = make([]string, len(packet.Children[1].Children))
@@ -120,12 +118,12 @@ type SearchResultDone struct {
 	LDAPResult
 }
 
-func (s *SearchResultDone) Marshal() (*ber.Packet, error) {
+func (s *SearchResultDone) Marshal() (*ber.Packet, *ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchResultDone, nil, "SearchResultDone")
 	s.AddPackets(packet)
-	return packet, nil
+	return packet, nil, nil
 }
 
-func (s *SearchResultDone) Unmarshal(packet *ber.Packet) error {
+func (s *SearchResultDone) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
 	return nil
 }

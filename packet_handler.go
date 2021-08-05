@@ -30,18 +30,18 @@ func NewMessage(messageID int32) *Handler {
 
 func (m *Handler) Close() {
 	m.closed.Do(func() {
-		debug.Log("Handler.Close()")
+		debug.Log("")
 		close(m.receiverChan)
 	})
 }
 
 func (m *Handler) Receive() (*Envelope, error) {
-	debug.Log("Receive(): Waiting for incoming messages from message bus")
+	debug.Log("Waiting for incoming messages from message bus")
 	data, ok := <-m.receiverChan
 	if !ok {
 		return nil, nil
 	}
 
-	debug.Log("Receive(): incoming message :)")
+	debug.Log("Forwarding incoming message")
 	return data, nil
 }

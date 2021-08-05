@@ -148,10 +148,10 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 }
 
 func (c *Conn) ReadIncomingMessages() (err error) {
-	debug.Log("ReadIncomingMessages()")
+	debug.Log("")
 	c.wg.Add(1)
 	defer func() {
-		debug.Log("ReadIncomingMessages() exited")
+		debug.Log("exited")
 		if err := recover(); err != nil {
 			err = fmt.Errorf("ldap message processor panicked: %v", err)
 		}
@@ -162,11 +162,11 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 		err = c.Close()
 	}()
 
-	debug.Log("ReadIncomingMessages(): Looping and waiting for incoming packets")
+	debug.Log("Looping and waiting for incoming packets")
 	for {
 		select {
 		case <-c.closeMsgProcessor:
-			debug.Logf("ReadIncomingMessages(): closeMsgProcessor chan is closed, ending routine now")
+			debug.Logf("closeMsgProcessor chan is closed, ending routine now")
 			break
 		default:
 			var incomingPacket *ber.Packet
@@ -197,7 +197,7 @@ func (c *Conn) RegisterMessage(m *Handler) {
 	c.mu.Lock()
 	c.activeMessages[m.messageID] = m
 	c.mu.Unlock()
-	debug.Logf("RegisterMessage(messageID=%d)", m.messageID)
+	debug.Logf("(messageID=%d)", m.messageID)
 }
 
 func (c *Conn) FindMessageHandler(id int32) *Handler {
@@ -216,12 +216,12 @@ func (c *Conn) UnregisterMessage(m *Handler) {
 	delete(c.activeMessages, m.messageID)
 	c.mu.Unlock()
 	m.Close()
-	debug.Logf("UnregisterMessage(messageID=%d)", m.messageID)
+	debug.Logf("(messageID=%d)", m.messageID)
 }
 
 func (c *Conn) newMessage(op, control *ber.Packet) (*Envelope, *Handler) {
 	envelope := c.NewEnvelope(op, control)
-	debug.Logf("newMessage() -> envelope.MessageID=%d", envelope.MessageID)
+	debug.Logf("-> envelope.MessageID=%d", envelope.MessageID)
 
 	return envelope, NewMessage(envelope.MessageID)
 }

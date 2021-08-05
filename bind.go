@@ -45,7 +45,7 @@ func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
 	c.RegisterMessage(handler)
 	defer c.UnregisterMessage(handler)
 
-	debug.Log("Bind(): Sending bind request")
+	debug.Log("Sending bind request")
 	err = c.SendMessage(envelope.Marshal())
 	if err != nil {
 		panic(err)
@@ -54,10 +54,6 @@ func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
 	envelope, err = handler.Receive()
 	simpleBindResult := &SimpleBindResult{}
 	err = simpleBindResult.Unmarshal(envelope.Packet, envelope.Controls)
-
-	if simpleBindResult.ResultCode == 0 {
-		debug.Log("Bind successfull!! :)")
-	}
 
 	return simpleBindResult, err
 }

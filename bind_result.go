@@ -10,7 +10,7 @@ type SimpleBindResult struct {
 
 func (s *SimpleBindResult) Marshal() (*ber.Packet, *ber.Packet, error) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationBindResponse, nil, "Simple Bind Response")
-	s.AddPackets(packet)
+	s.LDAPResult.AddPackets(packet)
 
 	return packet, nil, nil
 }

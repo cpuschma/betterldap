@@ -100,17 +100,40 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 		return nil, fmt.Errorf("marshal of search request failed: %w", err)
 	}
 
-	err = c.SendMessage(packet)
+	envelope, handler := c.newMessage(packet, nil)
+	c.RegisterMessage(handler)
+	defer c.UnregisterMessage(handler)
+
+	err = c.SendMessage(envelope.Marshal())
+	if err != nil {
+		return nil, err
+	}
+
 	searchResult := &SearchResult{}
+scanLoop:
 	for {
-		responsePacket, err := c.ReadPacket()
+		envelope, err = handler.Receive()
 		if err != nil {
 			return nil, err
 		}
-		_ = responsePacket
-		// TODO: Create SearchResult and scan entries
 
-		break
+		switch envelope.Packet.Tag {
+		case ApplicationSearchResultEntry:
+			entry := &SearchResultEntry{}
+			if err = entry.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
+				return nil, err
+			}
+
+			searchResult.Entries = append(searchResult.Entries, entry)
+			break
+		case ApplicationSearchResultReference:
+			break
+		case ApplicationSearchResultDone:
+			fmt.Println("done")
+			break scanLoop
+		default:
+			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
+		}
 	}
 
 	return searchResult, nil

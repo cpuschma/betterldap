@@ -2,8 +2,8 @@ package main
 
 import (
 	"betterldap"
+	"betterldap/internal/debug"
 	"fmt"
-	"time"
 )
 
 func main() {
@@ -18,24 +18,30 @@ func main() {
 	//debug.Logf("%#v\n", packet)
 	//return
 
-	conn, err := betterldap.Dial("tcp", "10.203.156.32:389", betterldap.ConnectionOptions{})
+	conn, err := betterldap.Dial("tcp", "127.0.0.1:389", betterldap.ConnectionOptions{})
 	if err != nil {
 		panic(err)
 	}
+	defer conn.Close()
 
 	go conn.ReadIncomingMessages()
 
 	fmt.Printf("Bind: ")
 	fmt.Println(conn.Bind(&betterldap.SimpleBindRequest{
 		Version:  3,
-		DN:       "christopher.puschmann@login.ds.signintra.com",
-		Password: "5R@9mC%SaRdHb2",
+		DN:       "cn=admin,dc=my-company,dc=com",
+		Password: "admin123!",
 	}))
 
-	fmt.Println("sleep 2sec")
-	time.Sleep(2 * time.Second)
-	fmt.Println(conn.Close())
-	time.Sleep(2 * time.Second)
-	fmt.Println(conn.Close())
-
+	searchResult, err := conn.Search(&betterldap.SearchRequest{
+		BaseDN:       "ou=Users,ou=LEJ-02,ou=DE,ou=Locations,dc=my-company,dc=com",
+		Scope:        betterldap.ScopeWholeSubtree,
+		DerefAliases: betterldap.NeverDerefAliases,
+		Filter:       "(objectclass=inetOrgPerson)",
+		Attributes:   []string{"cn"},
+	})
+	if err != nil {
+		panic(err)
+	}
+	debug.Logf("%#v\n", searchResult)
 }

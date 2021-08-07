@@ -68,6 +68,7 @@ func (e *SearchResultEntry) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err er
 	e.DN = packet.Children[0].Value.(string)
 	e.Attributes = make([]*PartialAttribute, len(packet.Children[1].Children))
 	for i, attribute := range packet.Children[1].Children {
+		e.Attributes[i] = &PartialAttribute{}
 		if err = e.Attributes[i].Unmarshal(attribute, nil); err != nil {
 			return err
 		}
@@ -99,7 +100,7 @@ func (e *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
 }
 
 func (e *PartialAttribute) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
-	e.Name = packet.Children[0].Value.(string) // Name
+	e.Name = packet.Children[0].Data.String() // Name
 	// Pre-allocate, since we can determine the length at this point
 	e.Values = make([]string, len(packet.Children[1].Children))
 

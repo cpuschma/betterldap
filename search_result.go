@@ -86,12 +86,12 @@ type PartialAttribute struct {
 	Values []string
 }
 
-func (e *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
+func (p *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "partialAttributeList")
-	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, e.Name, "type"))
+	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, p.Name, "type"))
 
 	attributes := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSet, nil, "vals")
-	for _, v := range e.Values {
+	for _, v := range p.Values {
 		attributes.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, v, "value"))
 	}
 	packet.AppendChild(attributes)
@@ -99,16 +99,24 @@ func (e *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
 	return packet, nil, nil
 }
 
-func (e *PartialAttribute) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
-	e.Name = packet.Children[0].Data.String() // Name
+func (p *PartialAttribute) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
+	p.Name = packet.Children[0].Data.String() // Name
 	// Pre-allocate, since we can determine the length at this point
-	e.Values = make([]string, len(packet.Children[1].Children))
+	p.Values = make([]string, len(packet.Children[1].Children))
 
 	for i, v := range packet.Children[1].Children { // Values
-		e.Values[i] = v.Value.(string)
+		p.Values[i] = v.Value.(string)
 	}
 
 	return nil
+}
+
+func (p *PartialAttribute) String() string {
+	if len(p.Values) > 0 {
+		return p.Values[0]
+	}
+
+	return ""
 }
 
 ///////////////////////////////////////////////////////

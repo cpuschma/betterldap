@@ -38,10 +38,16 @@ func main() {
 		Scope:        betterldap.ScopeWholeSubtree,
 		DerefAliases: betterldap.NeverDerefAliases,
 		Filter:       "(objectclass=inetOrgPerson)",
-		Attributes:   []string{"cn"},
 	})
 	if err != nil {
 		panic(err)
+	}
+
+	for _, v := range searchResult.Entries {
+		fmt.Printf("DN: %s\n", v.DN)
+		for _, attribute := range v.Attributes {
+			fmt.Printf("  %s: %s\n", attribute.Name, attribute.String())
+		}
 	}
 	debug.Logf("%#v\n", searchResult)
 }

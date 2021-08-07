@@ -100,9 +100,9 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 		return nil, fmt.Errorf("marshal of search request failed: %w", err)
 	}
 
-	envelope, handler := c.newMessage(packet, nil)
-	c.RegisterMessage(handler)
-	defer c.UnregisterMessage(handler)
+	envelope, handler := c.NewMessage(packet, nil)
+	c.RegisterHandler(handler)
+	defer c.UnregisterHandler(handler)
 
 	err = c.SendMessage(envelope.Marshal())
 	if err != nil {

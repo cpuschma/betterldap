@@ -25,12 +25,8 @@ func (s *SimpleBindRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
 
 func (s *SimpleBindRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error) {
 	s.Version = packet.Children[0].Value.(int64)
-	if err = parseString(packet, 1, &s.DN); err != nil {
-		return
-	}
-	if err = parseString(packet, 2, &s.Password); err != nil {
-		return
-	}
+	s.DN = packet.Children[1].Data.String()
+	s.Password = packet.Children[2].Data.String()
 
 	return nil
 }
@@ -41,9 +37,9 @@ func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
 		return nil, fmt.Errorf("marshal of bind request failed: %w", err)
 	}
 
-	envelope, handler := c.newMessage(packet, nil)
-	c.RegisterMessage(handler)
-	defer c.UnregisterMessage(handler)
+	envelope, handler := c.NewMessage(packet, nil)
+	c.RegisterHandler(handler)
+	defer c.UnregisterHandler(handler)
 
 	debug.Log("Sending bind request")
 	err = c.SendMessage(envelope.Marshal())

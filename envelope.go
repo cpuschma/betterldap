@@ -2,7 +2,6 @@ package betterldap
 
 import (
 	"errors"
-	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 )
 
@@ -28,12 +27,7 @@ func (m *Envelope) Unmarshal(packet *ber.Packet) error {
 		return errors.New("envelope has less than two child packets")
 	}
 
-	var i int64
-	if err := parseInt64(packet, 0, &i); err != nil {
-		return fmt.Errorf("%w: missing or incorrect messageID in envelope", err)
-	}
-
-	m.MessageID = int32(i)
+	m.MessageID = int32(packet.Children[0].Value.(int64))
 	m.Packet = packet.Children[1]
 	if childrenCount > 2 {
 		m.Controls = packet.Children[2]

@@ -15,7 +15,7 @@ type Conn struct {
 	wg                sync.WaitGroup
 	once              sync.Once
 	messageID         int32
-	activeMessages    map[int32]*Handler
+	activeHandlers    map[int32]*Handler
 	closeMsgProcessor chan struct{}
 }
 
@@ -24,7 +24,7 @@ func NewConnection(conn net.Conn) *Conn {
 		conn:              conn,
 		mu:                &sync.RWMutex{},
 		closeMsgProcessor: make(chan struct{}, 1),
-		activeMessages:    make(map[int32]*Handler),
+		activeHandlers:    make(map[int32]*Handler),
 	}
 }
 
@@ -193,9 +193,9 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 	}
 }
 
-func (c *Conn) RegisterMessage(m *Handler) {
+func (c *Conn) RegisterHandler(m *Handler) {
 	c.mu.Lock()
-	c.activeMessages[m.messageID] = m
+	c.activeHandlers[m.messageID] = m
 	c.mu.Unlock()
 	debug.Logf("(messageID=%d)", m.messageID)
 }
@@ -204,22 +204,22 @@ func (c *Conn) FindMessageHandler(id int32) *Handler {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	msg, ok := c.activeMessages[id]
+	msg, ok := c.activeHandlers[id]
 	if !ok {
 		return nil
 	}
 	return msg
 }
 
-func (c *Conn) UnregisterMessage(m *Handler) {
+func (c *Conn) UnregisterHandler(m *Handler) {
 	c.mu.Lock()
-	delete(c.activeMessages, m.messageID)
+	delete(c.activeHandlers, m.messageID)
 	c.mu.Unlock()
 	m.Close()
 	debug.Logf("(messageID=%d)", m.messageID)
 }
 
-func (c *Conn) newMessage(op, control *ber.Packet) (*Envelope, *Handler) {
+func (c *Conn) NewMessage(op, control *ber.Packet) (*Envelope, *Handler) {
 	envelope := c.NewEnvelope(op, control)
 	debug.Logf("-> envelope.MessageID=%d", envelope.MessageID)
 

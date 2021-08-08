@@ -1,6 +1,7 @@
 package betterldap
 
 import (
+	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 )
 
@@ -10,6 +11,20 @@ type LDAPResult struct {
 	ResultCode   int64
 	MatchedDN    string
 	ErrorMessage string
+}
+
+func isLDAPResult(packet *ber.Packet) bool {
+	if packet.ClassType == ber.ClassApplication &&
+		packet.TagType == ber.TypeConstructed &&
+		len(packet.Children) == 3 {
+		return true
+	}
+
+	return false
+}
+
+func (l *LDAPResult) Error() string {
+	return fmt.Sprintf("%d: %s", l.ResultCode, l.ErrorMessage)
 }
 
 func (l *LDAPResult) Packets() []*ber.Packet {

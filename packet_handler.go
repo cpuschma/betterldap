@@ -21,10 +21,10 @@ type Handler struct {
 	closed       sync.Once
 }
 
-func NewMessage(messageID int32) *Handler {
+func NewHandler(messageID int32) *Handler {
 	return &Handler{
 		messageID:    messageID,
-		receiverChan: make(chan *Envelope, 12),
+		receiverChan: make(chan *Envelope),
 	}
 }
 
@@ -43,5 +43,9 @@ func (m *Handler) Receive() (*Envelope, error) {
 	}
 
 	debug.Log("Forwarding incoming message")
+	if err := data.err; err != nil {
+		return nil, err
+	}
+
 	return data, nil
 }

@@ -18,26 +18,25 @@ func main() {
 	//debug.Logf("%#v\n", packet)
 	//return
 
-	conn, err := betterldap.Dial("tcp", "127.0.0.1:389", betterldap.ConnectionOptions{})
+	conn, err := betterldap.Dial("tcp", "192.168.243.131:389", betterldap.ConnectionOptions{})
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
-
 	go conn.ReadIncomingMessages()
 
 	fmt.Printf("Bind: ")
 	fmt.Println(conn.Bind(&betterldap.SimpleBindRequest{
 		Version:  3,
-		DN:       "cn=admin,dc=my-company,dc=com",
+		DN:       "administrator@collaboration.local",
 		Password: "admin123!",
 	}))
 
 	searchResult, err := conn.Search(&betterldap.SearchRequest{
-		BaseDN:       "ou=Users,ou=LEJ-02,ou=DE,ou=Locations,dc=my-company,dc=com",
+		BaseDN:       "OU=Users,OU=LEJ-02,OU=DE,OU=Locations,DC=collaboration,DC=local",
 		Scope:        betterldap.ScopeWholeSubtree,
 		DerefAliases: betterldap.NeverDerefAliases,
-		Filter:       "(objectclass=inetOrgPerson)",
+		Filter:       "(mail=*@collaboration.local)",
 	})
 	if err != nil {
 		panic(err)
@@ -46,8 +45,10 @@ func main() {
 	for _, v := range searchResult.Entries {
 		fmt.Printf("DN: %s\n", v.DN)
 		for _, attribute := range v.Attributes {
-			fmt.Printf("  %s: %s\n", attribute.Name, attribute.String())
+			fmt.Printf("  %s: %s\n", attribute.Name, attribute)
 		}
+		fmt.Println()
 	}
 	debug.Logf("%#v\n", searchResult)
+
 }

@@ -5,11 +5,12 @@ import (
 	hexpac "encoding/hex"
 	"errors"
 	"fmt"
-	ber "github.com/go-asn1-ber/asn1-ber"
 	"io"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	ber "github.com/go-asn1-ber/asn1-ber"
 )
 
 // FilterMap contains human readable descriptions of Filter choices
@@ -56,7 +57,7 @@ func CompileFilter(filter string) (*ber.Packet, error) {
 	case pos > len(filter):
 		return nil, errors.New("ldap: unexpected end of filter")
 	case pos < len(filter):
-		return nil, errors.New("ldap: finished compiling filter with extra at end: "+fmt.Sprint(filter[pos:]))
+		return nil, errors.New("ldap: finished compiling filter with extra at end: " + fmt.Sprint(filter[pos:]))
 	}
 	return packet, nil
 }
@@ -193,7 +194,7 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New("panic compiling ldap filter")
+			err = errors.New("ldap: error compiling filter")
 		}
 	}()
 	newPos := pos
@@ -367,10 +368,10 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 		case packet.Tag == FilterEqualityMatch && bytes.Equal(condition.Bytes(), _SymbolAny):
 			packet = ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterPresent, attribute.String(), FilterMap[FilterPresent])
 		case packet.Tag == FilterEqualityMatch && bytes.Index(condition.Bytes(), _SymbolAny) > -1:
-			packet.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, ber.TagOctetString, attribute.String(), "Attribute"))
+			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute.String(), "Attribute"))
 			packet.Tag = FilterSubstrings
 			packet.Description = FilterMap[uint64(packet.Tag)]
-			seq := ber.Encode(ber.ClassContext, ber.TypeConstructed, ber.TagSequence, nil, "Substrings")
+			seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Substrings")
 			parts := bytes.Split(condition.Bytes(), _SymbolAny)
 			for i, part := range parts {
 				if len(part) == 0 {
@@ -397,8 +398,8 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 			if encodeErr != nil {
 				return packet, newPos, encodeErr
 			}
-			packet.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, ber.TagOctetString, attribute.String(), "Attribute"))
-			packet.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, ber.TagOctetString, encodedString, "Condition"))
+			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute.String(), "Attribute"))
+			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, encodedString, "Condition"))
 		}
 
 		newPos += currentWidth
@@ -455,4 +456,3 @@ func decodeEscapedSymbols(src []byte) (string, error) {
 		offset += runeSize
 	}
 }
-

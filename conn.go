@@ -2,6 +2,8 @@ package betterldap
 
 import (
 	"betterldap/internal/debug"
+	"context"
+	"errors"
 	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 	"net"
@@ -17,6 +19,8 @@ type Conn struct {
 	messageID         int32
 	activeHandlers    map[int32]*Handler
 	closeMsgProcessor chan struct{}
+	defaultHandler    func(*Conn, *Envelope)
+	context.Context
 }
 
 func NewConnection(conn net.Conn) *Conn {
@@ -39,13 +43,12 @@ func (c *Conn) Write(b []byte) (int, error) {
 // and close all associated channels
 func (c *Conn) Close() (err error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	c.once.Do(func() {
 		err = c.conn.Close()
 		close(c.closeMsgProcessor)
 	})
-
+	c.mu.Unlock()
+	c.wg.Wait()
 	return
 }
 
@@ -151,15 +154,32 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 	debug.Log("")
 	c.wg.Add(1)
 	defer func() {
-		debug.Log("exited")
+		c.wg.Done()
 		if err := recover(); err != nil {
 			err = fmt.Errorf("ldap message processor panicked: %v", err)
+		}
+		debug.Logf("defer called. err=%s", err)
+
+		// When the message reader exited, message all active message
+		// handlers and send them an envelope with an error
+		if err != nil {
+			err = errors.New("message reader exited")
+		}
+
+		errEnvelope := c.NewEnvelope(nil, nil)
+		errEnvelope.err = err
+		for _, h := range c.activeHandlers {
+			h.receiverChan <- errEnvelope
 		}
 
 		// Since the reader dies here, there's no other process
 		// reading incoming messages, so we should kill the connection
 		// at this point
-		err = c.Close()
+		if err == nil {
+			err = c.Close()
+		} else {
+			_ = c.Close()
+		}
 	}()
 
 	debug.Log("Looping and waiting for incoming packets")
@@ -171,18 +191,23 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 		default:
 			var incomingPacket *ber.Packet
 			incomingPacket, err = c.ReadPacket()
-			if err != nil {
+			if err != nil && incomingPacket == nil {
 				return
 			}
 
 			envelope := &Envelope{}
-			err = envelope.Unmarshal(incomingPacket)
-			if err != nil {
+			if err = envelope.Unmarshal(incomingPacket); err != nil {
 				return
 			}
 
 			handler := c.FindMessageHandler(envelope.MessageID)
 			if handler == nil {
+				if isLDAPResult(envelope.Packet) {
+					result := &LDAPResult{}
+					result.Unmarshal(envelope.Packet, envelope.Controls)
+					err = result
+					return
+				}
 				// disregard this message, no handler for this id registered
 				continue
 			}
@@ -223,5 +248,5 @@ func (c *Conn) NewMessage(op, control *ber.Packet) (*Envelope, *Handler) {
 	envelope := c.NewEnvelope(op, control)
 	debug.Logf("-> envelope.MessageID=%d", envelope.MessageID)
 
-	return envelope, NewMessage(envelope.MessageID)
+	return envelope, NewHandler(envelope.MessageID)
 }

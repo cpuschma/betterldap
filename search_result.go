@@ -43,7 +43,7 @@ var _ IBerMessage = (*SearchResultEntry)(nil)
 
 type SearchResultEntry struct {
 	DN         string
-	Attributes []*PartialAttribute
+	Attributes []PartialAttribute
 }
 
 func (e *SearchResultEntry) Marshal() (*ber.Packet, *ber.Packet, error) {
@@ -66,9 +66,9 @@ func (e *SearchResultEntry) Marshal() (*ber.Packet, *ber.Packet, error) {
 
 func (e *SearchResultEntry) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error) {
 	e.DN = packet.Children[0].Value.(string)
-	e.Attributes = make([]*PartialAttribute, len(packet.Children[1].Children))
+	e.Attributes = make([]PartialAttribute, len(packet.Children[1].Children))
 	for i, attribute := range packet.Children[1].Children {
-		e.Attributes[i] = &PartialAttribute{}
+		e.Attributes[i] = PartialAttribute{}
 		if err = e.Attributes[i].Unmarshal(attribute, nil); err != nil {
 			return err
 		}
@@ -87,12 +87,12 @@ type PartialAttribute struct {
 }
 
 func (p *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
-	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "partialAttributeList")
-	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, p.Name, "type"))
+	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "")
+	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, p.Name, ""))
 
-	attributes := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSet, nil, "vals")
+	attributes := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSet, nil, "")
 	for _, v := range p.Values {
-		attributes.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, v, "value"))
+		attributes.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, v, ""))
 	}
 	packet.AppendChild(attributes)
 
@@ -128,7 +128,7 @@ type SearchResultDone struct {
 }
 
 func (s *SearchResultDone) Marshal() (*ber.Packet, *ber.Packet, error) {
-	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchResultDone, nil, "SearchResultDone")
+	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchResultDone, nil, "Search Result Done")
 	s.AddPackets(packet)
 	return packet, nil, nil
 }

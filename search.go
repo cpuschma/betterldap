@@ -95,46 +95,51 @@ func (s *SearchRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error)
 }
 
 func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
-	packet, _, err := req.Marshal()
+	if req.Filter == "" {
+		req.Filter = "(objectClass=*)"
+	}
+
+	packet, controls, err := req.Marshal()
 	if err != nil {
 		return nil, fmt.Errorf("marshal of search request failed: %w", err)
 	}
 
-	envelope, handler := c.NewMessage(packet, nil)
-	c.RegisterHandler(handler)
-	defer c.UnregisterHandler(handler)
+	envelope, handler := c.NewMessage(packet, controls)
+	_, _ = envelope, handler
+	//c.RegisterHandler(handler)
+	//defer c.UnregisterHandler(handler)
+	//
+	//err = c.SendMessage(envelope.Marshal())
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//searchResult := &SearchResult{}
+	//handler.Receive()
+	//scanLoop:
+	//	for {
+	//		envelope, err = handler.Receive()
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//
+	//		switch envelope.Packet.Tag {
+	//		case ApplicationSearchResultEntry:
+	//			//entry := &SearchResultEntry{}
+	//			//if err = entry.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
+	//			//	return nil, err
+	//			//}
+	//			//
+	//			//searchResult.Entries = append(searchResult.Entries, entry)
+	//			break
+	//		case ApplicationSearchResultReference:
+	//			break
+	//		case ApplicationSearchResultDone:
+	//			break scanLoop
+	//		default:
+	//			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
+	//		}
+	//	}
 
-	err = c.SendMessage(envelope.Marshal())
-	if err != nil {
-		return nil, err
-	}
-
-	searchResult := &SearchResult{}
-scanLoop:
-	for {
-		envelope, err = handler.Receive()
-		if err != nil {
-			return nil, err
-		}
-
-		switch envelope.Packet.Tag {
-		case ApplicationSearchResultEntry:
-			entry := &SearchResultEntry{}
-			if err = entry.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
-				return nil, err
-			}
-
-			searchResult.Entries = append(searchResult.Entries, entry)
-			break
-		case ApplicationSearchResultReference:
-			break
-		case ApplicationSearchResultDone:
-			fmt.Println("done")
-			break scanLoop
-		default:
-			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
-		}
-	}
-
-	return searchResult, nil
+	return nil, nil
 }

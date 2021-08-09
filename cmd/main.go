@@ -2,7 +2,6 @@ package main
 
 import (
 	"betterldap"
-	"betterldap/internal/debug"
 	"fmt"
 )
 
@@ -51,11 +50,9 @@ func main() {
 	for _, v := range searchResult.Entries {
 		fmt.Printf("DN: %s\n", v.DN)
 		for _, attribute := range v.Attributes {
-			fmt.Printf("  %s: %s\n", attribute.Name, attribute)
+			fmt.Printf("  %s: %s\n", attribute.Name, attribute.String())
 		}
 		fmt.Println()
 	}
-	debug.Logf("%#v\n", searchResult)
 	fmt.Println("Unbind:", conn.Unbind())
-
 }

@@ -55,14 +55,4 @@ func startProcessor(conn *Conn) {
 
 		debug.Logf("prcessor exited (err=%v, IsClosing=%v)", err, conn.IsClosing())
 	}()
-	//go func() {
-	//	for {
-	//		packet, _ := conn.ReadPacket()
-	//		if packet == nil {
-	//			return
-	//		}
-	//
-	//		conn.receiverChan <- packet
-	//	}
-	//}()
 }

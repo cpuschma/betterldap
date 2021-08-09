@@ -56,5 +56,6 @@ func main() {
 		fmt.Println()
 	}
 	debug.Logf("%#v\n", searchResult)
+	fmt.Println("Unbind:", conn.Unbind())
 
 }

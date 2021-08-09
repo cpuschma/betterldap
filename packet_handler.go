@@ -36,7 +36,11 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 
 		handler := c.FindMessageHandler(envelope.MessageID)
 		if handler == nil {
-			debug.Logf("No handler defined for message with id=%d (%#v)", envelope.MessageID, envelope)
+			debug.Logf("No handler registered for message with id=%d (%#v)", envelope.MessageID, envelope)
+			if c.defaultHandler != nil {
+				c.defaultHandler(c, envelope)
+			}
+
 			continue
 		}
 

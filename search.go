@@ -134,6 +134,7 @@ scanLoop:
 		case ApplicationSearchResultReference:
 			break
 		case ApplicationSearchResultDone:
+			searchResult.LDAPResult.Unmarshal(envelope.Packet, envelope.Controls)
 			break scanLoop
 		default:
 			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)

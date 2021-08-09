@@ -115,34 +115,29 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 	}
 
 	searchResult := &SearchResult{}
-	//scanLoop:
+scanLoop:
 	for {
 		envelope, ok := handler.Receive()
 		if !ok {
 			return nil, errors.New("handler closed")
 		}
 
-		if envelope.Packet.Tag == ApplicationSearchResultDone {
-			break
-		}
+		switch envelope.Packet.Tag {
+		case ApplicationSearchResultEntry:
+			entry := &SearchResultEntry{}
+			if err = entry.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
+				return nil, err
+			}
 
-		//
-		//switch envelope.Packet.Tag {
-		//case ApplicationSearchResultEntry:
-		//	entry := &SearchResultEntry{}
-		//	if err = entry.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
-		//		return nil, err
-		//	}
-		//
-		//	searchResult.Entries = append(searchResult.Entries, entry)
-		//	break
-		//case ApplicationSearchResultReference:
-		//	break
-		//case ApplicationSearchResultDone:
-		//	break scanLoop
-		//default:
-		//	return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
-		//}
+			searchResult.Entries = append(searchResult.Entries, entry)
+			break
+		case ApplicationSearchResultReference:
+			break
+		case ApplicationSearchResultDone:
+			break scanLoop
+		default:
+			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
+		}
 	}
 
 	return searchResult, nil

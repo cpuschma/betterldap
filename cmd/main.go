@@ -20,10 +20,10 @@ func main() {
 
 	conn, err := betterldap.Dial("tcp", "192.168.243.131:389", betterldap.ConnectionOptions{})
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 	defer conn.Close()
-	go conn.ReadIncomingMessages()
 
 	fmt.Printf("Bind: ")
 	fmt.Println(conn.Bind(&betterldap.SimpleBindRequest{
@@ -36,10 +36,16 @@ func main() {
 		BaseDN:       "OU=Users,OU=LEJ-02,OU=DE,OU=Locations,DC=collaboration,DC=local",
 		Scope:        betterldap.ScopeWholeSubtree,
 		DerefAliases: betterldap.NeverDerefAliases,
-		Filter:       "(mail=*@collaboration.local)",
+		Filter:       "(mail=*)",
 	})
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
+	}
+
+	if searchResult == nil {
+		fmt.Println("searchResult is nil, but got no error?")
+		return
 	}
 
 	for _, v := range searchResult.Entries {

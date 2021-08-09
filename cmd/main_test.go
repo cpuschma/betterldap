@@ -32,8 +32,10 @@ func BenchmarkOldSearch(b *testing.B) {
 
 func BenchmarkNewSearch(b *testing.B) {
 	b.StopTimer()
-	conn, _ := betterldap.Dial("tcp", "192.168.243.131:389", betterldap.ConnectionOptions{})
-	go conn.ReadIncomingMessages()
+	conn, err := betterldap.Dial("tcp", "192.168.243.131:389", betterldap.ConnectionOptions{})
+	if err != nil {
+		panic(err)
+	}
 	conn.Bind(&betterldap.SimpleBindRequest{
 		Version:  3,
 		DN:       "administrator@collaboration.local",
@@ -42,16 +44,14 @@ func BenchmarkNewSearch(b *testing.B) {
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		searchResult, err := conn.Search(&betterldap.SearchRequest{
+		_, err = conn.Search(&betterldap.SearchRequest{
 			BaseDN:       "OU=Users,OU=LEJ-02,OU=DE,OU=Locations,DC=collaboration,DC=local",
 			Scope:        betterldap.ScopeWholeSubtree,
 			DerefAliases: betterldap.NeverDerefAliases,
 			Filter:       "(mail=*@collaboration.local)",
 		})
 		if err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
-
-		_ = searchResult
 	}
 }

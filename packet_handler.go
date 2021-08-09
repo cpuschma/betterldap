@@ -2,50 +2,59 @@ package betterldap
 
 import (
 	"betterldap/internal/debug"
-	"sync"
+	"bufio"
+	"fmt"
+	ber "github.com/go-asn1-ber/asn1-ber"
 )
 
-//1. Library functions get called
-//2. Function constructs the operation & control packets
-//3. Packets are encapsulated using an Envelope
-//4. Library creates a message handler and registers the messageID
-//   so incoming packages can be routed correctly
-//5. Library runs ReadIncomingMessages in another thread
-//6. When a new incoming messages arrives: extract the messageID
-//7. Find the registered message handler for this ID
-//8. If found: Pipe it to the handler
+func (c *Conn) ReadIncomingMessages() (err error) {
+	debug.Log()
+	defer func() {
+		if e := recover(); err != nil {
+			err = fmt.Errorf("message reader panicked: %s", e)
+		}
+	}()
 
-type Handler struct {
-	messageID    int32
-	receiverChan chan *Envelope
-	closed       sync.Once
-}
+	buffCon := bufio.NewReaderSize(c.conn, 4096)
+	for {
+		if c.isClosing {
+			return
+		}
 
-func NewHandler(messageID int32) *Handler {
-	return &Handler{
-		messageID:    messageID,
-		receiverChan: make(chan *Envelope),
+		var packet *ber.Packet
+		packet, err = ber.ReadPacket(buffCon)
+		if err != nil {
+			if c.isClosing {
+				err = nil // disregard
+			}
+
+			return
+		}
+
+		envelope := c.CreateEnvelopeFromPacket(packet)
+		debug.Logf("Incoming msg (messageID=%d)", envelope.MessageID)
+
+		handler := c.FindMessageHandler(envelope.MessageID)
+		if handler == nil {
+			debug.Logf("No handler defined for message with id=%d (%#v)", envelope.MessageID, envelope)
+			continue
+		}
+
+		handler <- envelope
 	}
 }
 
-func (m *Handler) Close() {
-	m.closed.Do(func() {
-		debug.Log("")
-		close(m.receiverChan)
-	})
+type Handler chan *Envelope
+
+func NewHandler() Handler {
+	return make(Handler, 3)
 }
 
-func (m *Handler) Receive() (*Envelope, error) {
-	debug.Log("Waiting for incoming messages from message bus")
-	data, ok := <-m.receiverChan
-	if !ok {
-		return nil, nil
-	}
+func (m Handler) Close() {
+	close(m)
+}
 
-	debug.Log("Forwarding incoming message")
-	if err := data.err; err != nil {
-		return nil, err
-	}
-
-	return data, nil
+func (m Handler) Receive() (*Envelope, bool) {
+	val, ok := <-m
+	return val, ok
 }

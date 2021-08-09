@@ -3,8 +3,6 @@ package betterldap
 import (
 	"betterldap/internal/debug"
 	"context"
-	"errors"
-	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 	"net"
 	"sync"
@@ -17,8 +15,10 @@ type Conn struct {
 	wg                sync.WaitGroup
 	once              sync.Once
 	messageID         int32
-	activeHandlers    map[int32]*Handler
+	activeHandlers    map[int32]chan *Envelope
 	closeMsgProcessor chan struct{}
+	receiverChan      chan *ber.Packet
+	isClosing         bool
 	defaultHandler    func(*Conn, *Envelope)
 	context.Context
 }
@@ -28,28 +28,32 @@ func NewConnection(conn net.Conn) *Conn {
 		conn:              conn,
 		mu:                &sync.RWMutex{},
 		closeMsgProcessor: make(chan struct{}, 1),
-		activeHandlers:    make(map[int32]*Handler),
+		receiverChan:      make(chan *ber.Packet, 12),
+		activeHandlers:    make(map[int32]chan *Envelope),
 	}
 }
 
 func (c *Conn) Write(b []byte) (int, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return c.conn.Write(b)
+	n, err := c.conn.Write(b)
+	c.mu.Unlock()
+	return n, err
 }
 
 // Close will tell the underyling connection to close
 // and close all associated channels
 func (c *Conn) Close() (err error) {
-	c.mu.Lock()
 	c.once.Do(func() {
-		err = c.conn.Close()
+		c.isClosing = true
 		close(c.closeMsgProcessor)
+		err = c.conn.Close()
+		c.wg.Wait()
 	})
-	c.mu.Unlock()
-	c.wg.Wait()
 	return
+}
+
+func (c *Conn) IsClosing() bool {
+	return c.isClosing
 }
 
 // SendMessage is a wrapper for Conn.Write. It further
@@ -58,10 +62,6 @@ func (c *Conn) Close() (err error) {
 func (c *Conn) SendMessage(packet *ber.Packet) error {
 	_, err := c.Write(packet.Bytes())
 	return err
-}
-
-func (c *Conn) ReadPacket() (*ber.Packet, error) {
-	return ber.ReadPacket(c.conn)
 }
 
 // https://datatracker.ietf.org/doc/html/rfc4511#section-4.1.1
@@ -103,7 +103,7 @@ func (c *Conn) NewEnvelope(op, controls *ber.Packet) *Envelope {
 	return envelope
 }
 
-func (c *Conn) UnpackEnvelope(packet *ber.Packet) *Envelope {
+func (c *Conn) CreateEnvelopeFromPacket(packet *ber.Packet) *Envelope {
 	envelope := &Envelope{
 		MessageID: int32(packet.Children[0].Value.(int64)),
 		Packet:    packet.Children[1],
@@ -150,103 +150,35 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 	return c.conn.SetWriteDeadline(t)
 }
 
-func (c *Conn) ReadIncomingMessages() (err error) {
-	debug.Log("")
-	c.wg.Add(1)
-	defer func() {
-		c.wg.Done()
-		if err := recover(); err != nil {
-			err = fmt.Errorf("ldap message processor panicked: %v", err)
-		}
-		debug.Logf("defer called. err=%s", err)
-
-		// When the message reader exited, message all active message
-		// handlers and send them an envelope with an error
-		if err != nil {
-			err = errors.New("message reader exited")
-		}
-
-		errEnvelope := c.NewEnvelope(nil, nil)
-		errEnvelope.err = err
-		for _, h := range c.activeHandlers {
-			h.receiverChan <- errEnvelope
-		}
-
-		// Since the reader dies here, there's no other process
-		// reading incoming messages, so we should kill the connection
-		// at this point
-		if err == nil {
-			err = c.Close()
-		} else {
-			_ = c.Close()
-		}
-	}()
-
-	debug.Log("Looping and waiting for incoming packets")
-	for {
-		select {
-		case <-c.closeMsgProcessor:
-			debug.Logf("closeMsgProcessor chan is closed, ending routine now")
-			break
-		default:
-			var incomingPacket *ber.Packet
-			incomingPacket, err = c.ReadPacket()
-			if err != nil && incomingPacket == nil {
-				return
-			}
-
-			envelope := &Envelope{}
-			if err = envelope.Unmarshal(incomingPacket); err != nil {
-				return
-			}
-
-			handler := c.FindMessageHandler(envelope.MessageID)
-			if handler == nil {
-				if isLDAPResult(envelope.Packet) {
-					result := &LDAPResult{}
-					result.Unmarshal(envelope.Packet, envelope.Controls)
-					err = result
-					return
-				}
-				// disregard this message, no handler for this id registered
-				continue
-			}
-
-			handler.receiverChan <- envelope
-			break
-		}
-	}
-}
-
-func (c *Conn) RegisterHandler(m *Handler) {
+func (c *Conn) RegisterHandler(id int32, m chan *Envelope) {
 	c.mu.Lock()
-	c.activeHandlers[m.messageID] = m
+	c.activeHandlers[id] = m
 	c.mu.Unlock()
-	debug.Logf("(messageID=%d)", m.messageID)
+	debug.Logf("(messageID=%d)", id)
 }
 
-func (c *Conn) FindMessageHandler(id int32) *Handler {
+func (c *Conn) FindMessageHandler(id int32) chan *Envelope {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	msg, ok := c.activeHandlers[id]
+	channel, ok := c.activeHandlers[id]
 	if !ok {
 		return nil
 	}
-	return msg
+	return channel
 }
 
-func (c *Conn) UnregisterHandler(m *Handler) {
+func (c *Conn) UnregisterHandler(id int32, m Handler) {
 	c.mu.Lock()
-	delete(c.activeHandlers, m.messageID)
+	delete(c.activeHandlers, id)
 	c.mu.Unlock()
 	m.Close()
-	debug.Logf("(messageID=%d)", m.messageID)
+	debug.Logf("(messageID=%d)", id)
 }
 
-func (c *Conn) NewMessage(op, control *ber.Packet) (*Envelope, *Handler) {
+func (c *Conn) NewMessage(op, control *ber.Packet) (*Envelope, Handler) {
 	envelope := c.NewEnvelope(op, control)
 	debug.Logf("-> envelope.MessageID=%d", envelope.MessageID)
 
-	return envelope, NewHandler(envelope.MessageID)
+	return envelope, NewHandler()
 }

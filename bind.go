@@ -38,8 +38,8 @@ func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
 	}
 
 	envelope, handler := c.NewMessage(packet, nil)
-	c.RegisterHandler(handler)
-	defer c.UnregisterHandler(handler)
+	c.RegisterHandler(envelope.MessageID, handler)
+	//defer c.UnregisterHandler(handler)
 
 	debug.Log("Sending bind request")
 	err = c.SendMessage(envelope.Marshal())
@@ -47,7 +47,7 @@ func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
 		panic(err)
 	}
 
-	envelope, err = handler.Receive()
+	envelope, _ = handler.Receive()
 	simpleBindResult := &SimpleBindResult{}
 	err = simpleBindResult.Unmarshal(envelope.Packet, envelope.Controls)
 

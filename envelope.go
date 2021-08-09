@@ -9,8 +9,6 @@ type Envelope struct {
 	MessageID int32
 	Packet    *ber.Packet
 	Controls  *ber.Packet
-
-	err error
 }
 
 func (m *Envelope) Marshal() *ber.Packet {

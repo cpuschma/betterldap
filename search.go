@@ -1,6 +1,7 @@
 package betterldap
 
 import (
+	"errors"
 	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 )
@@ -105,41 +106,44 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 	}
 
 	envelope, handler := c.NewMessage(packet, controls)
-	_, _ = envelope, handler
-	//c.RegisterHandler(handler)
-	//defer c.UnregisterHandler(handler)
-	//
-	//err = c.SendMessage(envelope.Marshal())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//searchResult := &SearchResult{}
-	//handler.Receive()
-	//scanLoop:
-	//	for {
-	//		envelope, err = handler.Receive()
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//
-	//		switch envelope.Packet.Tag {
-	//		case ApplicationSearchResultEntry:
-	//			//entry := &SearchResultEntry{}
-	//			//if err = entry.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
-	//			//	return nil, err
-	//			//}
-	//			//
-	//			//searchResult.Entries = append(searchResult.Entries, entry)
-	//			break
-	//		case ApplicationSearchResultReference:
-	//			break
-	//		case ApplicationSearchResultDone:
-	//			break scanLoop
-	//		default:
-	//			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
-	//		}
-	//	}
+	c.RegisterHandler(envelope.MessageID, handler)
+	defer c.UnregisterHandler(envelope.MessageID, handler)
 
-	return nil, nil
+	err = c.SendMessage(envelope.Marshal())
+	if err != nil {
+		return nil, err
+	}
+
+	searchResult := &SearchResult{}
+	//scanLoop:
+	for {
+		envelope, ok := handler.Receive()
+		if !ok {
+			return nil, errors.New("handler closed")
+		}
+
+		if envelope.Packet.Tag == ApplicationSearchResultDone {
+			break
+		}
+
+		//
+		//switch envelope.Packet.Tag {
+		//case ApplicationSearchResultEntry:
+		//	entry := &SearchResultEntry{}
+		//	if err = entry.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
+		//		return nil, err
+		//	}
+		//
+		//	searchResult.Entries = append(searchResult.Entries, entry)
+		//	break
+		//case ApplicationSearchResultReference:
+		//	break
+		//case ApplicationSearchResultDone:
+		//	break scanLoop
+		//default:
+		//	return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
+		//}
+	}
+
+	return searchResult, nil
 }

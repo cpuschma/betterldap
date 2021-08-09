@@ -33,8 +33,8 @@ func (s *SimpleBindRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err er
 func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
 	packet, _ := req.Marshal()
 	envelope, handler := c.NewMessage(packet, nil)
-	c.RegisterHandler(envelope.MessageID, handler)
-	//defer c.UnregisterHandler(handler)
+	c.AddHandler(envelope.MessageID, handler)
+	defer c.RemoveHandler(envelope.MessageID)
 
 	debug.Log("Sending bind request")
 	err := c.SendMessage(envelope.Marshal())

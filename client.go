@@ -53,6 +53,10 @@ func startProcessor(conn *Conn) {
 			_ = conn.Close()
 		}
 
-		debug.Logf("prcessor exited (err=%v, IsClosing=%v)", err, conn.IsClosing())
+		for id, _ := range conn.activeHandlers {
+			conn.RemoveHandler(id)
+			debug.Logf("removed still registered handler for (id=%d)", id)
+		}
+		debug.Logf("message processor exited (err=%v, IsClosing=%v)", err, conn.IsClosing())
 	}()
 }

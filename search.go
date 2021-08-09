@@ -102,8 +102,8 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 
 	packet, controls := req.Marshal()
 	envelope, handler := c.NewMessage(packet, controls)
-	c.RegisterHandler(envelope.MessageID, handler)
-	defer c.UnregisterHandler(envelope.MessageID, handler)
+	c.AddHandler(envelope.MessageID, handler)
+	defer c.RemoveHandler(envelope.MessageID)
 
 	err := c.SendMessage(envelope.Marshal())
 	if err != nil {

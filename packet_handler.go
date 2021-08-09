@@ -34,7 +34,7 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 		envelope := c.CreateEnvelopeFromPacket(packet)
 		debug.Logf("Incoming msg (messageID=%d)", envelope.MessageID)
 
-		handler := c.FindMessageHandler(envelope.MessageID)
+		handler := c.FindHandler(envelope.MessageID)
 		if handler == nil {
 			debug.Logf("No handler registered for message with id=%d (%#v)", envelope.MessageID, envelope)
 			if c.defaultHandler != nil {
@@ -44,21 +44,29 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 			continue
 		}
 
-		handler <- envelope
+		handler.Send(envelope)
 	}
 }
 
-type Handler chan *Envelope
-
-func NewHandler() Handler {
-	return make(Handler, 3)
+type Handler struct {
+	c chan *Envelope
 }
 
-func (m Handler) Close() {
-	close(m)
+func NewHandler() *Handler {
+	return &Handler{
+		c: make(chan *Envelope, 3),
+	}
 }
 
-func (m Handler) Receive() (*Envelope, bool) {
-	val, ok := <-m
+func (m *Handler) Close() {
+	close(m.c)
+}
+
+func (m *Handler) Send(e *Envelope) {
+	m.c <- e
+}
+
+func (m *Handler) Receive() (*Envelope, bool) {
+	val, ok := <-m.c
 	return val, ok
 }

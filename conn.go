@@ -15,7 +15,7 @@ type Conn struct {
 	wg                sync.WaitGroup
 	once              sync.Once
 	messageID         int32
-	activeHandlers    map[int32]chan *Envelope
+	activeHandlers    map[int32]*Handler
 	closeMsgProcessor chan struct{}
 	receiverChan      chan *ber.Packet
 	isClosing         bool
@@ -29,7 +29,7 @@ func NewConnection(conn net.Conn) *Conn {
 		mu:                &sync.RWMutex{},
 		closeMsgProcessor: make(chan struct{}, 1),
 		receiverChan:      make(chan *ber.Packet, 12),
-		activeHandlers:    make(map[int32]chan *Envelope),
+		activeHandlers:    make(map[int32]*Handler),
 	}
 }
 
@@ -150,33 +150,33 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 	return c.conn.SetWriteDeadline(t)
 }
 
-func (c *Conn) RegisterHandler(id int32, m chan *Envelope) {
+func (c *Conn) AddHandler(id int32, handler *Handler) {
 	c.mu.Lock()
-	c.activeHandlers[id] = m
+	c.activeHandlers[id] = handler
 	c.mu.Unlock()
 	debug.Logf("(messageID=%d)", id)
 }
 
-func (c *Conn) FindMessageHandler(id int32) chan *Envelope {
+func (c *Conn) FindHandler(id int32) *Handler {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	channel, ok := c.activeHandlers[id]
+	handler, ok := c.activeHandlers[id]
 	if !ok {
 		return nil
 	}
-	return channel
+	return handler
 }
 
-func (c *Conn) UnregisterHandler(id int32, m Handler) {
+func (c *Conn) RemoveHandler(id int32) {
 	c.mu.Lock()
+	c.activeHandlers[id].Close()
 	delete(c.activeHandlers, id)
 	c.mu.Unlock()
-	m.Close()
 	debug.Logf("(messageID=%d)", id)
 }
 
-func (c *Conn) NewMessage(op, control *ber.Packet) (*Envelope, Handler) {
+func (c *Conn) NewMessage(op, control *ber.Packet) (*Envelope, *Handler) {
 	envelope := c.NewEnvelope(op, control)
 	debug.Logf("-> envelope.MessageID=%d", envelope.MessageID)
 

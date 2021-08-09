@@ -6,8 +6,8 @@ var _ IBerMessage = (*UnbindRequest)(nil)
 
 type UnbindRequest struct{}
 
-func (u UnbindRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
-	return ber.Encode(ber.ClassApplication, ber.TypePrimitive, ApplicationUnbindRequest, nil, "unbindRequest"), nil, nil
+func (u UnbindRequest) Marshal() (*ber.Packet, *ber.Packet) {
+	return ber.Encode(ber.ClassApplication, ber.TypePrimitive, ApplicationUnbindRequest, nil, "unbindRequest"), nil
 }
 
 func (u UnbindRequest) Unmarshal(messageOp *ber.Packet, controls *ber.Packet) error {
@@ -16,7 +16,7 @@ func (u UnbindRequest) Unmarshal(messageOp *ber.Packet, controls *ber.Packet) er
 
 func (c *Conn) Unbind() error {
 	unbindRequest := &UnbindRequest{}
-	packet, controls, _ := unbindRequest.Marshal()
+	packet, controls := unbindRequest.Marshal()
 	envelope, _ := c.NewMessage(packet, controls)
 
 	return c.SendMessage(envelope.Marshal())

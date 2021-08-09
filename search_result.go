@@ -14,8 +14,8 @@ type SearchResult struct {
 	LDAPResult
 }
 
-func (s *SearchResult) Marshal() (*ber.Packet, *ber.Packet, error) {
-	return nil, nil, nil
+func (s *SearchResult) Marshal() (*ber.Packet, *ber.Packet) {
+	return nil, nil
 }
 
 func (s *SearchResult) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
@@ -46,22 +46,18 @@ type SearchResultEntry struct {
 	Attributes []PartialAttribute
 }
 
-func (e *SearchResultEntry) Marshal() (*ber.Packet, *ber.Packet, error) {
+func (e *SearchResultEntry) Marshal() (*ber.Packet, *ber.Packet) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ber.TagOctetString, nil, "searchResultEntry")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, e.DN, "objectName"))
 
 	attributes := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "attributes")
 	for _, v := range e.Attributes {
-		child, _, err := v.Marshal()
-		if err != nil {
-			return nil, nil, err
-		}
-
+		child, _ := v.Marshal()
 		attributes.AppendChild(child)
 	}
 	packet.AppendChild(attributes)
 
-	return packet, nil, nil
+	return packet, nil
 }
 
 func (e *SearchResultEntry) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error) {
@@ -86,7 +82,7 @@ type PartialAttribute struct {
 	Values []string
 }
 
-func (p *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
+func (p *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet) {
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, p.Name, ""))
 
@@ -96,7 +92,7 @@ func (p *PartialAttribute) Marshal() (*ber.Packet, *ber.Packet, error) {
 	}
 	packet.AppendChild(attributes)
 
-	return packet, nil, nil
+	return packet, nil
 }
 
 func (p *PartialAttribute) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
@@ -127,10 +123,10 @@ type SearchResultDone struct {
 	LDAPResult
 }
 
-func (s *SearchResultDone) Marshal() (*ber.Packet, *ber.Packet, error) {
+func (s *SearchResultDone) Marshal() (*ber.Packet, *ber.Packet) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchResultDone, nil, "Search Result Done")
 	s.AddPackets(packet)
-	return packet, nil, nil
+	return packet, nil
 }
 
 func (s *SearchResultDone) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {

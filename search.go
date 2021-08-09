@@ -38,7 +38,7 @@ type SearchRequest struct {
 	Attributes   []string
 }
 
-func (s *SearchRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
+func (s *SearchRequest) Marshal() (*ber.Packet, *ber.Packet) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationSearchRequest, nil, "Search Request")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, s.BaseDN, "Base DN"))
 	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagEnumerated, s.Scope, "Scope"))
@@ -49,7 +49,7 @@ func (s *SearchRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
 
 	filterPacket, err := CompileFilter(s.Filter)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil
 	}
 	packet.AppendChild(filterPacket)
 
@@ -70,7 +70,7 @@ func (s *SearchRequest) Marshal() (*ber.Packet, *ber.Packet, error) {
 	}
 
 	packet.AppendChild(attributes)
-	return packet, nil, nil
+	return packet, nil
 }
 
 func (s *SearchRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err error) {
@@ -100,16 +100,12 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 		req.Filter = "(objectClass=*)"
 	}
 
-	packet, controls, err := req.Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("marshal of search request failed: %w", err)
-	}
-
+	packet, controls := req.Marshal()
 	envelope, handler := c.NewMessage(packet, controls)
 	c.RegisterHandler(envelope.MessageID, handler)
 	defer c.UnregisterHandler(envelope.MessageID, handler)
 
-	err = c.SendMessage(envelope.Marshal())
+	err := c.SendMessage(envelope.Marshal())
 	if err != nil {
 		return nil, err
 	}

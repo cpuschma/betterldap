@@ -8,11 +8,11 @@ type SimpleBindResult struct {
 	LDAPResult
 }
 
-func (s *SimpleBindResult) Marshal() (*ber.Packet, *ber.Packet, error) {
+func (s *SimpleBindResult) Marshal() (*ber.Packet, *ber.Packet) {
 	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationBindResponse, nil, "Simple Bind Response")
 	s.LDAPResult.AddPackets(packet)
 
-	return packet, nil, nil
+	return packet, nil
 }
 
 func (s *SimpleBindResult) Unmarshal(packet *ber.Packet, control *ber.Packet) error {

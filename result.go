@@ -42,8 +42,8 @@ func (l *LDAPResult) AddPackets(parent *ber.Packet) {
 	}
 }
 
-func (l *LDAPResult) Marshal() (*ber.Packet, *ber.Packet, error) {
-	return nil, nil, nil
+func (l *LDAPResult) Marshal() (*ber.Packet, *ber.Packet) {
+	return nil, nil
 }
 
 func (l *LDAPResult) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {

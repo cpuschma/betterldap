@@ -7,9 +7,9 @@ import (
 var _ IBerMessage = (*SearchResult)(nil)
 
 type SearchResult struct {
-	Entries []*SearchResultEntry
-	//Referrals []string
-	//Controls []Control
+	Entries   []*SearchResultEntry
+	Referrals []string
+	Controls  []Control
 
 	LDAPResult
 }

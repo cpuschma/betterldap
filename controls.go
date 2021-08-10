@@ -28,6 +28,20 @@ func encodeControls(controls []Control) *ber.Packet {
 	return packet
 }
 
+func DecodeControls(packets []*ber.Packet) ([]Control, error) {
+	controls := make([]Control, len(packets))
+	for i, packet := range packets {
+		control, err := FindControl(packet)
+		if err != nil {
+			return nil, err
+		}
+
+		controls[i] = control
+	}
+
+	return controls, nil
+}
+
 func FindControl(packet *ber.Packet) (Control, error) {
 	var (
 		controlType  = packet.Children[0].Data.String()

@@ -136,14 +136,18 @@ scanLoop:
 			searchResult.Entries = append(searchResult.Entries, entry)
 			break
 		case ApplicationSearchResultReference:
+			searchResult.Referrals = append(searchResult.Referrals, envelope.Packet.Children[0].Data.String())
 			break
 		case ApplicationSearchResultDone:
-			searchResult.LDAPResult.Unmarshal(envelope.Packet, envelope.Controls)
+			if err = searchResult.LDAPResult.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
+				return nil, err
+			}
+
 			break scanLoop
 		default:
 			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
 		}
 	}
 
-	return searchResult, nil
+	return searchResult, err
 }

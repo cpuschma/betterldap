@@ -101,6 +101,14 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 	}
 
 	packet, controls := req.Marshal()
+
+	controls = encodeControls([]Control{
+		&PagedResultsControl{
+			Size:   5,
+			Cookie: []byte("ur mom gay"),
+		},
+	})
+
 	envelope, handler := c.NewMessage(packet, controls)
 	c.AddHandler(envelope.MessageID, handler)
 	defer c.RemoveHandler(envelope.MessageID)

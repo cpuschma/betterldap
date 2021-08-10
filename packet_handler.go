@@ -5,12 +5,13 @@ import (
 	"bufio"
 	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
+	"sync"
 )
 
 func (c *Conn) ReadIncomingMessages() (err error) {
 	debug.Log()
 	defer func() {
-		if e := recover(); err != nil {
+		if e := recover(); e != nil {
 			err = fmt.Errorf("message reader panicked: %s", e)
 		}
 	}()
@@ -49,17 +50,21 @@ func (c *Conn) ReadIncomingMessages() (err error) {
 }
 
 type Handler struct {
-	c chan *Envelope
+	c    chan *Envelope
+	once *sync.Once
 }
 
 func NewHandler() *Handler {
 	return &Handler{
-		c: make(chan *Envelope, 3),
+		c:    make(chan *Envelope, 3),
+		once: &sync.Once{},
 	}
 }
 
 func (m *Handler) Close() {
-	close(m.c)
+	m.once.Do(func() {
+		close(m.c)
+	})
 }
 
 func (m *Handler) Send(e *Envelope) {

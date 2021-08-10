@@ -16,7 +16,9 @@ func (m *Envelope) Marshal() *ber.Packet {
 	envelope.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, m.MessageID, "MessageID"))
 	envelope.AppendChild(m.Packet) // protocolOp
 
-	// TODO: Implement controls
+	if m.Controls != nil {
+		envelope.AppendChild(m.Controls)
+	}
 
 	return envelope
 }

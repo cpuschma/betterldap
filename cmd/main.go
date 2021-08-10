@@ -6,15 +6,18 @@ import (
 )
 
 func main() {
-	//data, _ := ioutil.ReadFile("./testdata/searchRequest_ou.bin")
+	//data, _ := ioutil.ReadFile("./testdata/paging.bin")
 	//packet := ber.DecodePacket(data)
 	//
 	//envelope := &betterldap.Envelope{}
 	//envelope.Unmarshal(packet)
 	//
-	//searchRequest := &betterldap.SearchRequest{}
-	//fmt.Println(searchRequest.Unmarshal(envelope.Packet, envelope.Controls))
-	//debug.Logf("%#v\n", packet)
+	//c, err := betterldap.FindControl(envelope.Controls.Children[0])
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//debug.Logf("%#v\n", c)
 	//return
 
 	conn, err := betterldap.Dial("tcp", "192.168.243.131:389", betterldap.ConnectionOptions{})

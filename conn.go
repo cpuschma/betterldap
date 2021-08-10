@@ -170,10 +170,12 @@ func (c *Conn) FindHandler(id int32) *Handler {
 
 func (c *Conn) RemoveHandler(id int32) {
 	c.mu.Lock()
-	c.activeHandlers[id].Close()
-	delete(c.activeHandlers, id)
+	if _, ok := c.activeHandlers[id]; ok {
+		c.activeHandlers[id].Close()
+		delete(c.activeHandlers, id)
+		debug.Logf("(messageID=%d)", id)
+	}
 	c.mu.Unlock()
-	debug.Logf("(messageID=%d)", id)
 }
 
 func (c *Conn) NewMessage(op, control *ber.Packet) (*Envelope, *Handler) {

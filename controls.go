@@ -6,6 +6,7 @@ import (
 )
 
 type Control interface {
+	GetControlTyp() string
 	Marshal() *ber.Packet
 	Unmarshal(packet *ber.Packet)
 }
@@ -28,10 +29,20 @@ func encodeControls(controls []Control) *ber.Packet {
 	return packet
 }
 
-func DecodeControls(packets []*ber.Packet) ([]Control, error) {
-	controls := make([]Control, len(packets))
-	for i, packet := range packets {
-		control, err := FindControl(packet)
+func FindControl(controls []Control, controlType string) Control {
+	for i := range controls {
+		if controls[i].GetControlTyp() == controlType {
+			return controls[i]
+		}
+	}
+
+	return nil
+}
+
+func DecodeControls(controlsEnvelope *ber.Packet) ([]Control, error) {
+	controls := make([]Control, len(controlsEnvelope.Children))
+	for i, packet := range controlsEnvelope.Children {
+		control, err := DecodeControl(packet)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +53,7 @@ func DecodeControls(packets []*ber.Packet) ([]Control, error) {
 	return controls, nil
 }
 
-func FindControl(packet *ber.Packet) (Control, error) {
+func DecodeControl(packet *ber.Packet) (Control, error) {
 	var (
 		controlType  = packet.Children[0].Data.String()
 		control      Control
@@ -78,6 +89,10 @@ var _ Control = (*PagedResultsControl)(nil)
 type PagedResultsControl struct {
 	Size   int32
 	Cookie []byte
+}
+
+func (p *PagedResultsControl) GetControlTyp() string {
+	return ControlTypePaging
 }
 
 func (p *PagedResultsControl) Marshal() *ber.Packet {

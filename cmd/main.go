@@ -12,7 +12,7 @@ func main() {
 	//envelope := &betterldap.Envelope{}
 	//envelope.Unmarshal(packet)
 	//
-	//c, err := betterldap.FindControl(envelope.Controls.Children[0])
+	//c, err := betterldap.DecodeControl(envelope.Controls.Children[0])
 	//if err != nil {
 	//	panic(err)
 	//}

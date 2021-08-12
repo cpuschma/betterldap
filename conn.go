@@ -107,7 +107,10 @@ func (c *Conn) CreateEnvelopeFromPacket(packet *ber.Packet) *Envelope {
 	envelope := &Envelope{
 		MessageID: int32(packet.Children[0].Value.(int64)),
 		Packet:    packet.Children[1],
-		Controls:  nil,
+	}
+
+	if len(packet.Children) > 2 {
+		envelope.Controls = packet.Children[2]
 	}
 
 	return envelope

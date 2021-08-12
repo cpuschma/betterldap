@@ -36,6 +36,7 @@ type SearchRequest struct {
 	TypesOnly    bool
 	Filter       string
 	Attributes   []string
+	Controls     []Control
 }
 
 func (s *SearchRequest) Marshal() (*ber.Packet, *ber.Packet) {
@@ -100,16 +101,8 @@ func (c *Conn) Search(req *SearchRequest) (*SearchResult, error) {
 		req.Filter = "(objectClass=*)"
 	}
 
-	packet, controls := req.Marshal()
-
-	controls = encodeControls([]Control{
-		&PagedResultsControl{
-			Size:   5,
-			Cookie: []byte("ur mom gay"),
-		},
-	})
-
-	envelope, handler := c.NewMessage(packet, controls)
+	packet, _ := req.Marshal()
+	envelope, handler := c.NewMessage(packet, encodeControls(req.Controls))
 	c.AddHandler(envelope.MessageID, handler)
 	defer c.RemoveHandler(envelope.MessageID)
 
@@ -124,6 +117,15 @@ scanLoop:
 		envelope, ok := handler.Receive()
 		if !ok {
 			return nil, errors.New("handler closed")
+		}
+
+		if envelope.Controls != nil {
+			controls, err := DecodeControls(envelope.Controls)
+			if err != nil {
+				return nil, err
+			}
+
+			searchResult.Controls = append(searchResult.Controls, controls...)
 		}
 
 		switch envelope.Packet.Tag {
@@ -143,6 +145,7 @@ scanLoop:
 				return nil, err
 			}
 
+			searchResult.Controls, err = DecodeControls(envelope.Controls)
 			break scanLoop
 		default:
 			return nil, fmt.Errorf("invalid tag for search response: %d", envelope.Packet.Tag)
@@ -150,4 +153,58 @@ scanLoop:
 	}
 
 	return searchResult, err
+}
+
+func (c *Conn) SearchWithPaging(searchRequest *SearchRequest, size int32) (*SearchResult, error) {
+	var pagingControl *PagedResultsControl
+
+	if p := FindControl(searchRequest.Controls, ControlTypePaging); p == nil {
+		pagingControl = &PagedResultsControl{
+			Size: size,
+		}
+		searchRequest.Controls = append(searchRequest.Controls, pagingControl)
+	} else {
+		pagingControl = p.(*PagedResultsControl)
+	}
+
+	searchResult := &SearchResult{}
+	for {
+		result, err := c.Search(searchRequest)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			return nil, errors.New("packets not received")
+		}
+
+		searchResult.Entries = append(searchResult.Entries, result.Entries...)
+		searchResult.Controls = append(searchResult.Controls, result.Controls...)
+		searchResult.Referrals = append(searchResult.Referrals, result.Referrals...)
+
+		// Atleast in Active Directory, the cookie will be sent
+		// on the searchResDone packet. Since Search returns when
+		// this packet has been received, we can safely wait and append
+		// all results in the meantime
+		pagingResult := FindControl(result.Controls, ControlTypePaging)
+		if pagingResult == nil {
+			pagingControl = nil
+			break
+		}
+
+		cookie := pagingResult.(*PagedResultsControl).Cookie
+		if len(cookie) == 0 {
+			break
+		}
+
+		pagingControl.Cookie = cookie
+	}
+
+	// TODO: wtf is this
+	// https://github.com/go-ldap/ldap/blob/master/v3/search.go#L349
+	//if pagingControl != nil {
+	//	pagingControl.Size = 0
+	//	c.Search(searchRequest)
+	//}
+
+	return searchResult, nil
 }

@@ -1,6 +1,7 @@
 package betterldap
 
 import (
+	"errors"
 	"fmt"
 	ber "github.com/go-asn1-ber/asn1-ber"
 )
@@ -40,6 +41,10 @@ func FindControl(controls []Control, controlType string) Control {
 }
 
 func DecodeControls(controlsEnvelope *ber.Packet) ([]Control, error) {
+	if controlsEnvelope == nil {
+		return nil, nil
+	}
+
 	controls := make([]Control, len(controlsEnvelope.Children))
 	for i, packet := range controlsEnvelope.Children {
 		control, err := DecodeControl(packet)
@@ -54,18 +59,18 @@ func DecodeControls(controlsEnvelope *ber.Packet) ([]Control, error) {
 }
 
 func DecodeControl(packet *ber.Packet) (Control, error) {
+	if len(packet.Children) != 2 {
+		return nil, errors.New("missing field in control")
+	}
+
 	var (
-		controlType  = packet.Children[0].Data.String()
-		control      Control
-		controlValue *ber.Packet
+		controlType = packet.Children[0].Data.String()
+		control     Control
 	)
 
-	if packet.Children[2] != nil {
-		var err error
-		controlValue, err = ber.DecodePacketErr(packet.Children[2].Data.Bytes())
-		if err != nil {
-			return nil, err
-		}
+	controlValue, err := ber.DecodePacketErr(packet.Children[1].Data.Bytes())
+	if err != nil {
+		return nil, err
 	}
 
 	switch controlType {

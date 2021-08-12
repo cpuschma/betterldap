@@ -34,12 +34,12 @@ func main() {
 		Password: "admin123!",
 	}))
 
-	searchResult, err := conn.Search(&betterldap.SearchRequest{
-		BaseDN:       "OU=Users,OU=LEJ-02,OU=DE,OU=Locations,DC=collaboration,DC=local",
+	searchResult, err := conn.SearchWithPaging(&betterldap.SearchRequest{
+		BaseDN:       "DC=collaboration,DC=local",
 		Scope:        betterldap.ScopeWholeSubtree,
 		DerefAliases: betterldap.NeverDerefAliases,
-		Filter:       "(mail=*)",
-	})
+		Filter:       "(objectClass=*)",
+	}, 3)
 	if err != nil {
 		fmt.Println(err)
 		return

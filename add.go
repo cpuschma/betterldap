@@ -48,7 +48,7 @@ func (c *Conn) Add(request AddRequest) (result LDAPResult, err error) {
 	debug.Log("Sending Add request")
 	err = c.SendMessage(envelope.Marshal())
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	envelope, _ = handler.Receive()

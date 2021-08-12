@@ -40,8 +40,8 @@ func (a *AddRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
 	return nil
 }
 
-func (c *Conn) Add(request AddRequest) (result LDAPResult, err error) {
-	envelope, handler := c.NewMessage(request.Marshal())
+func (c *Conn) Add(req AddRequest) (result LDAPResult, err error) {
+	envelope, handler := c.NewMessage(req.Marshal())
 	c.AddHandler(envelope.MessageID, handler)
 	defer c.RemoveHandler(envelope.MessageID)
 

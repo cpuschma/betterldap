@@ -125,7 +125,7 @@ scanLoop:
 				return nil, err
 			}
 
-			searchResult.Controls = append(searchResult.Controls, controls...)
+			searchResult.Controls = controls
 		}
 
 		switch envelope.Packet.Tag {

@@ -57,5 +57,7 @@ func main() {
 		}
 		fmt.Println()
 	}
+
+	fmt.Println("Search result entries:", len(searchResult.Entries))
 	fmt.Println("Unbind:", conn.Unbind())
 }

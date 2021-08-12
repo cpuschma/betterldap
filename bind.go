@@ -31,15 +31,14 @@ func (s *SimpleBindRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err er
 }
 
 func (c *Conn) Bind(req *SimpleBindRequest) (*SimpleBindResult, error) {
-	packet, _ := req.Marshal()
-	envelope, handler := c.NewMessage(packet, nil)
+	envelope, handler := c.NewMessage(req.Marshal())
 	c.AddHandler(envelope.MessageID, handler)
 	defer c.RemoveHandler(envelope.MessageID)
 
 	debug.Log("Sending bind request")
 	err := c.SendMessage(envelope.Marshal())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	envelope, _ = handler.Receive()

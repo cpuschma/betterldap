@@ -77,11 +77,9 @@ func DecodeControl(packet *ber.Packet) (Control, error) {
 	case ControlTypePaging:
 		control = &PagedResultsControl{}
 		control.Unmarshal(controlValue)
-		break
 	case ControlTypeAccountUsability:
 		control = &AccountUsableResponse{}
 		control.Unmarshal(controlValue)
-		break
 	}
 
 	if control == nil {

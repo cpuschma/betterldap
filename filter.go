@@ -367,7 +367,7 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 
 		case packet.Tag == FilterEqualityMatch && bytes.Equal(condition.Bytes(), _SymbolAny):
 			packet = ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterPresent, attribute.String(), FilterMap[FilterPresent])
-		case packet.Tag == FilterEqualityMatch && bytes.Index(condition.Bytes(), _SymbolAny) > -1:
+		case packet.Tag == FilterEqualityMatch && bytes.Contains(condition.Bytes(), _SymbolAny):
 			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute.String(), "Attribute"))
 			packet.Tag = FilterSubstrings
 			packet.Description = FilterMap[uint64(packet.Tag)]

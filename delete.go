@@ -21,7 +21,7 @@ func (d *DeleteRequest) Marshal() (messageOp *ber.Packet, controls *ber.Packet) 
 }
 
 func (d *DeleteRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
-	d.DN = packet.Children[0].Data.String()
+	d.DN = packet.Data.String()
 	return nil
 }
 

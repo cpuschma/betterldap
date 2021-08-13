@@ -136,10 +136,8 @@ scanLoop:
 			}
 
 			searchResult.Entries = append(searchResult.Entries, entry)
-			break
 		case ApplicationSearchResultReference:
 			searchResult.Referrals = append(searchResult.Referrals, envelope.Packet.Children[0].Data.String())
-			break
 		case ApplicationSearchResultDone:
 			if err = searchResult.LDAPResult.Unmarshal(envelope.Packet, envelope.Controls); err != nil {
 				return nil, err

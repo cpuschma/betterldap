@@ -11,6 +11,8 @@ type ConnectionOptions struct {
 	Dialer    net.Dialer
 }
 
+// AutostartMsgProcessor is a package variable. If set to true, a goroutine
+// will be spawned to handle incoming messages.
 var AutostartMsgProcessor = true
 
 func Dial(network, address string, opt ConnectionOptions) (*Conn, error) {

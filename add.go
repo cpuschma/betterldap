@@ -11,6 +11,7 @@ var _ IBerMessage = (*AddRequest)(nil)
 type AddRequest struct {
 	DN         string
 	Attributes []PartialAttribute
+	Controls   []Control
 }
 
 func (a *AddRequest) Marshal() (messageOp *ber.Packet, controls *ber.Packet) {
@@ -24,15 +25,15 @@ func (a *AddRequest) Marshal() (messageOp *ber.Packet, controls *ber.Packet) {
 	}
 	packet.AppendChild(attributes)
 
-	return packet, nil
+	return packet, encodeControls(a.Controls)
 }
 
-func (a *AddRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) error {
+func (a *AddRequest) Unmarshal(packet *ber.Packet, controls *ber.Packet) error {
 	a.DN = packet.Children[0].Data.String()
 
 	a.Attributes = make([]PartialAttribute, len(packet.Children[1].Children))
 	for i := range a.Attributes {
-		if err := a.Attributes[i].Unmarshal(packet.Children[1].Children[i], nil); err != nil {
+		if err := a.Attributes[i].Unmarshal(packet.Children[1].Children[i], controls); err != nil {
 			return err
 		}
 	}

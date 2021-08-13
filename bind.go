@@ -30,7 +30,7 @@ func (s *SimpleBindRequest) Unmarshal(packet *ber.Packet, _ *ber.Packet) (err er
 	return nil
 }
 
-func (c *Conn) Bind(req *SimpleBindRequest) (result SimpleBindResult, err error) {
+func (c *Conn) Bind(req SimpleBindRequest) (result SimpleBindResult, err error) {
 	envelope, handler := c.NewMessage(req.Marshal())
 	c.AddHandler(envelope.MessageID, handler)
 	defer c.RemoveHandler(envelope.MessageID)

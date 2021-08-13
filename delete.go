@@ -13,8 +13,9 @@ type DeleteRequest struct {
 }
 
 func (d *DeleteRequest) Marshal() (messageOp *ber.Packet, controls *ber.Packet) {
-	packet := ber.Encode(ber.ClassApplication, ber.TypeConstructed, ApplicationAddRequest, nil, "DelRequest")
-	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, d.DN, "LDAPDN"))
+	packet := ber.Encode(ber.ClassApplication, ber.TypePrimitive, ApplicationDelRequest, nil, "DelRequest")
+	packet.Value = d.DN
+	packet.Data.WriteString(d.DN)
 
 	return packet, nil
 }

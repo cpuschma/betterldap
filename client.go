@@ -53,7 +53,7 @@ func startProcessor(conn *Conn) {
 			_ = conn.Close()
 		}
 
-		for id, _ := range conn.activeHandlers {
+		for id := range conn.activeHandlers {
 			conn.RemoveHandler(id)
 			debug.Logf("removed still registered handler for (id=%d)", id)
 		}

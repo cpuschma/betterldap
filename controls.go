@@ -7,7 +7,7 @@ import (
 )
 
 type Control interface {
-	GetControlTyp() string
+	GetControlType() string
 	Marshal() *ber.Packet
 	Unmarshal(packet *ber.Packet)
 }
@@ -16,7 +16,12 @@ func createControlRootPacket(controlType string, criticality bool, op *ber.Packe
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, controlType, "controlType"))
 	packet.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, criticality, "criticality"))
-	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, string(op.Bytes()), "controlValue"))
+
+	var b []byte
+	if op != nil {
+		b = op.Bytes()
+	}
+	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, string(b), "controlValue"))
 
 	return packet
 }
@@ -32,7 +37,7 @@ func encodeControls(controls []Control) *ber.Packet {
 
 func FindControl(controls []Control, controlType string) Control {
 	for i := range controls {
-		if controls[i].GetControlTyp() == controlType {
+		if controls[i].GetControlType() == controlType {
 			return controls[i]
 		}
 	}
@@ -60,6 +65,7 @@ func DecodeControls(controlsEnvelope *ber.Packet) ([]Control, error) {
 
 func DecodeControl(packet *ber.Packet) (Control, error) {
 	if len(packet.Children) != 2 {
+		// required: controlType, controlValue
 		return nil, errors.New("missing field in control")
 	}
 
@@ -75,10 +81,10 @@ func DecodeControl(packet *ber.Packet) (Control, error) {
 
 	switch controlType {
 	case ControlTypePaging:
-		control = &PagedResultsControl{}
+		control = &ControlPagedResults{}
 		control.Unmarshal(controlValue)
 	case ControlTypeAccountUsability:
-		control = &AccountUsableResponse{}
+		control = &ControlAccountUsableResponse{}
 		control.Unmarshal(controlValue)
 	}
 

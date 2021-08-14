@@ -2,9 +2,10 @@ package betterldap
 
 import ber "github.com/go-asn1-ber/asn1-ber"
 
-var _ Control = (*AccountUsableResponse)(nil)
+var _ Control = (*ControlAccountUsableResponse)(nil)
+var _ Control = (*ControlAccountUsable)(nil)
 
-type AccountUsableResponse struct {
+type ControlAccountUsableResponse struct {
 	IsAvailable    int32
 	IsNotAvailable *AccountUsableResponseInfo
 }
@@ -17,9 +18,19 @@ type AccountUsableResponseInfo struct {
 	SecondsBeforeUnlock int32
 }
 
-func (a AccountUsableResponse) GetControlTyp() string { return ControlTypeAccountUsability }
+type ControlAccountUsable struct{}
 
-func (a *AccountUsableResponse) Marshal() *ber.Packet {
+func (c ControlAccountUsable) GetControlType() string { return ControlTypeAccountUsability }
+
+func (c ControlAccountUsable) Marshal() *ber.Packet {
+	return createControlRootPacket(c.GetControlType(), false, nil)
+}
+
+func (c ControlAccountUsable) Unmarshal(_ *ber.Packet) { return }
+
+func (a ControlAccountUsableResponse) GetControlType() string { return ControlTypeAccountUsability }
+
+func (a ControlAccountUsableResponse) Marshal() *ber.Packet {
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "accountUsableResponse")
 	packet.AppendChild(ber.NewInteger(ber.ClassUniversal, ber.TypePrimitive, ber.TagInteger, a.IsAvailable, "is_available"))
 
@@ -34,10 +45,10 @@ func (a *AccountUsableResponse) Marshal() *ber.Packet {
 		packet.AppendChild(infoPacket)
 	}
 
-	return createControlRootPacket(ControlTypeAccountUsability, false, packet)
+	return createControlRootPacket(a.GetControlType(), false, packet)
 }
 
-func (a *AccountUsableResponse) Unmarshal(packet *ber.Packet) {
+func (a *ControlAccountUsableResponse) Unmarshal(packet *ber.Packet) {
 	a.IsAvailable = int32(packet.Children[0].Value.(int64))
 
 	// is 'is_not_available' sequence present?

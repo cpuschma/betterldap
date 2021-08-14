@@ -154,15 +154,15 @@ scanLoop:
 }
 
 func (c *Conn) SearchWithPaging(searchRequest *SearchRequest, size int32) (*SearchResult, error) {
-	var pagingControl *PagedResultsControl
+	var pagingControl *ControlPagedResults
 
 	if p := FindControl(searchRequest.Controls, ControlTypePaging); p == nil {
-		pagingControl = &PagedResultsControl{
+		pagingControl = &ControlPagedResults{
 			Size: size,
 		}
 		searchRequest.Controls = append(searchRequest.Controls, pagingControl)
 	} else {
-		pagingControl = p.(*PagedResultsControl)
+		pagingControl = p.(*ControlPagedResults)
 	}
 
 	searchResult := &SearchResult{}
@@ -189,7 +189,7 @@ func (c *Conn) SearchWithPaging(searchRequest *SearchRequest, size int32) (*Sear
 			break
 		}
 
-		cookie := pagingResult.(*PagedResultsControl).Cookie
+		cookie := pagingResult.(*ControlPagedResults).Cookie
 		if len(cookie) == 0 {
 			break
 		}

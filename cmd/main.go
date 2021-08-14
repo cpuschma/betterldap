@@ -2,7 +2,6 @@ package main
 
 import (
 	"betterldap"
-	"encoding/base32"
 	"fmt"
 	"math/rand"
 )
@@ -16,7 +15,7 @@ func randomBytes(len int) []byte {
 }
 
 func main() {
-	conn, err := betterldap.Dial("tcp", "127.0.0.1:389", betterldap.ConnectionOptions{})
+	conn, err := betterldap.Dial("tcp", "192.168.243.131:389", betterldap.ConnectionOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -26,24 +25,21 @@ func main() {
 	fmt.Printf("Bind: ")
 	bindResult, err := conn.Bind(betterldap.SimpleBindRequest{
 		Version:  3,
-		DN:       "cn=admin,dc=my-company,dc=com",
+		DN:       "administrator@collaboration.local",
 		Password: "admin123!",
 	})
 	fmt.Println(bindResult, err)
 
-	b := randomBytes(16)
-	result, err := conn.Modify(betterldap.ModifyRequest{
-		Object: "uid=Otto.Baumann,ou=Users,ou=LEJ-02,ou=DE,ou=Locations,dc=my-company,dc=com",
-		Changes: []betterldap.ModifyChanges{
-			{
-				Operation: betterldap.ModifyOperationReplace,
-				Modification: betterldap.PartialAttribute{
-					Name:   "displayName",
-					Values: []string{base32.StdEncoding.EncodeToString(b)},
-				},
-			},
+	searchResult, err := conn.Search(&betterldap.SearchRequest{
+		BaseDN:       "ou=Users,ou=LEJ-02,ou=DE,ou=Locations,dc=collaboration,dc=local",
+		Scope:        betterldap.ScopeWholeSubtree,
+		DerefAliases: betterldap.NeverDerefAliases,
+		Filter:       "(objectClass=*)",
+		Controls: []betterldap.Control{
+			betterldap.ControlAccountUsable{},
 		},
 	})
 
-	fmt.Println(result, err)
+	fmt.Println(searchResult, err)
+	println()
 }

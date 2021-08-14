@@ -127,7 +127,7 @@ const (
 	ControlTypeMicrosoftServerLinkTTL = "1.2.840.113556.1.4.2309"
 )
 
-type ModifyOperation uint8
+type ModifyOperation int64
 
 const (
 	ModifyOperationAdd     ModifyOperation = 0

@@ -34,8 +34,18 @@ func (m ModifyRequest) Marshal() (messageOp *ber.Packet, controls *ber.Packet) {
 	return packet, encodeControls(m.Controls)
 }
 
-func (m *ModifyRequest) Unmarshal(messageOp *ber.Packet, controls *ber.Packet) error {
-	panic("implement me")
+func (m *ModifyRequest) Unmarshal(packet *ber.Packet, controls *ber.Packet) (err error) {
+	m.Object = packet.Children[0].Data.String()
+
+	m.Changes = make([]ModifyChanges, len(packet.Children[1].Children))
+	for i, v := range packet.Children[1].Children {
+		if err = m.Changes[i].Unmarshal(v, nil); err != nil {
+			return
+		}
+	}
+
+	m.Controls, err = DecodeControls(controls)
+	return
 }
 
 func (m ModifyChanges) Marshal() (messageOp *ber.Packet, controls *ber.Packet) {
@@ -48,8 +58,10 @@ func (m ModifyChanges) Marshal() (messageOp *ber.Packet, controls *ber.Packet) {
 	return packet, nil
 }
 
-func (m ModifyChanges) Unmarshal(messageOp *ber.Packet, controls *ber.Packet) error {
-	panic("implement me")
+func (m *ModifyChanges) Unmarshal(packet *ber.Packet, controls *ber.Packet) error {
+	m.Operation = ModifyOperation(packet.Children[0].Value.(int64))
+	err := m.Modification.Unmarshal(packet.Children[1], nil)
+	return err
 }
 
 func (c *Conn) Modify(req ModifyRequest) (result LDAPResult, err error) {

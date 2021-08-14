@@ -3,6 +3,7 @@ package betterldap
 import (
 	"errors"
 	"math/rand"
+	"time"
 )
 
 var (
@@ -10,8 +11,15 @@ var (
 	ErrCastFailed   = errors.New("cast to type failed")
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func randomBytes(len int) []byte {
 	buff := make([]byte, len)
-	rand.Read(buff)
+	for i := 0; i < len; i++ {
+		buff[i] = byte(rand.Intn(256))
+	}
+
 	return buff
 }

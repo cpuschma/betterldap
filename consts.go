@@ -126,3 +126,11 @@ const (
 	// ControlTypeMicrosoftServerLinkTTL - https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/f4f523a8-abc0-4b3a-a471-6b2fef135481?redirectedfrom=MSDN
 	ControlTypeMicrosoftServerLinkTTL = "1.2.840.113556.1.4.2309"
 )
+
+type ModifyOperation uint8
+
+const (
+	ModifyOperationAdd     ModifyOperation = 0
+	ModifyOperationDelete  ModifyOperation = 1
+	ModifyOperationReplace ModifyOperation = 2
+)

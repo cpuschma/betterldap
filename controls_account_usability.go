@@ -23,7 +23,7 @@ type ControlAccountUsable struct{}
 func (c ControlAccountUsable) GetControlType() string { return ControlTypeAccountUsability }
 
 func (c ControlAccountUsable) Marshal() *ber.Packet {
-	return createControlRootPacket(c.GetControlType(), false, nil)
+	return getControlRootPacket(c.GetControlType(), false, nil)
 }
 
 func (c ControlAccountUsable) Unmarshal(_ *ber.Packet) { return }
@@ -45,7 +45,7 @@ func (a ControlAccountUsableResponse) Marshal() *ber.Packet {
 		packet.AppendChild(infoPacket)
 	}
 
-	return createControlRootPacket(a.GetControlType(), false, packet)
+	return getControlRootPacket(a.GetControlType(), false, packet)
 }
 
 func (a *ControlAccountUsableResponse) Unmarshal(packet *ber.Packet) {

@@ -22,7 +22,7 @@ func (p *ControlPagedResults) Marshal() *ber.Packet {
 	cookie.Data.Write(p.Cookie)
 	packet.AppendChild(cookie)
 
-	return createControlRootPacket(p.GetControlType(), false, packet)
+	return getControlRootPacket(p.GetControlType(), false, packet)
 }
 
 func (p *ControlPagedResults) Unmarshal(packet *ber.Packet) {

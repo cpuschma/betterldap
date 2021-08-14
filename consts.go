@@ -104,20 +104,14 @@ const (
 	MatchingRuleAssertionMatchValue   = 3
 	MatchingRuleAssertionDNAttributes = 4
 
-	// ControlTypePaging - https://www.ietf.org/rfc/rfc2696.txt
-	ControlTypePaging = "1.2.840.113556.1.4.319"
-	// ControlTypeBeheraPasswordPolicy - https://tools.ietf.org/html/draft-behera-ldap-password-policy-10
-	ControlTypeBeheraPasswordPolicy = "1.3.6.1.4.1.42.2.27.8.5.1"
-	// ControlTypeVChuPasswordMustChange - https://tools.ietf.org/html/draft-vchu-ldap-pwd-policy-00
+	ControlTypePaging                 = "1.2.840.113556.1.4.319"
+	ControlTypeBeheraPasswordPolicy   = "1.3.6.1.4.1.42.2.27.8.5.1"
 	ControlTypeVChuPasswordMustChange = "2.16.840.1.113730.3.4.4"
-	// ControlTypeVChuPasswordWarning - https://tools.ietf.org/html/draft-vchu-ldap-pwd-policy-00
-	ControlTypeVChuPasswordWarning = "2.16.840.1.113730.3.4.5"
-	// ControlTypeManageDsaIT - https://tools.ietf.org/html/rfc3296
-	ControlTypeManageDsaIT = "2.16.840.1.113730.3.4.2"
-	// ControlTypeWhoAmI - https://tools.ietf.org/html/rfc4532
-	ControlTypeWhoAmI = "1.3.6.1.4.1.4203.1.11.3"
-
-	ControlTypeAccountUsability = "1.3.6.1.4.1.42.2.27.9.5.8"
+	ControlTypeVChuPasswordWarning    = "2.16.840.1.113730.3.4.5"
+	ControlTypeManageDsaIT            = "2.16.840.1.113730.3.4.2"
+	ControlTypeWhoAmI                 = "1.3.6.1.4.1.4203.1.11.3"
+	ControlTypeAccountUsability       = "1.3.6.1.4.1.42.2.27.9.5.8"
+	ControlTypeGetRights              = "1.3.6.1.4.1.42.2.27.9.5.2"
 
 	// ControlTypeMicrosoftNotification - https://msdn.microsoft.com/en-us/library/aa366983(v=vs.85).aspx
 	ControlTypeMicrosoftNotification = "1.2.840.113556.1.4.528"

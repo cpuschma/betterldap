@@ -12,7 +12,7 @@ type Control interface {
 	Unmarshal(packet *ber.Packet)
 }
 
-func createControlRootPacket(controlType string, criticality bool, op *ber.Packet) *ber.Packet {
+func getControlRootPacket(controlType string, criticality bool, op *ber.Packet) *ber.Packet {
 	packet := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Control")
 	packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, controlType, "controlType"))
 	packet.AppendChild(ber.NewBoolean(ber.ClassUniversal, ber.TypePrimitive, ber.TagBoolean, criticality, "criticality"))

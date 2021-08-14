@@ -2,25 +2,21 @@ package main
 
 import (
 	"betterldap"
+	"encoding/base32"
 	"fmt"
+	"math/rand"
 )
 
-func main() {
-	//data, _ := ioutil.ReadFile("./testdata/paging.bin")
-	//packet := ber.DecodePacket(data)
-	//
-	//envelope := &betterldap.Envelope{}
-	//envelope.Unmarshal(packet)
-	//
-	//c, err := betterldap.DecodeControl(envelope.Controls.Children[0])
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//debug.Logf("%#v\n", c)
-	//return
+func randomBytes(len int) []byte {
+	b := make([]byte, len)
+	for i := 0; i < len; i++ {
+		b[i] = byte(rand.Intn(256))
+	}
+	return b
+}
 
-	conn, err := betterldap.Dial("tcp", "192.168.243.131:389", betterldap.ConnectionOptions{})
+func main() {
+	conn, err := betterldap.Dial("tcp", "127.0.0.1:389", betterldap.ConnectionOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -28,36 +24,26 @@ func main() {
 	defer conn.Close()
 
 	fmt.Printf("Bind: ")
-	fmt.Println(conn.Bind(&betterldap.SimpleBindRequest{
+	bindResult, err := conn.Bind(betterldap.SimpleBindRequest{
 		Version:  3,
-		DN:       "administrator@collaboration.local",
+		DN:       "cn=admin,dc=my-company,dc=com",
 		Password: "admin123!",
-	}))
+	})
+	fmt.Println(bindResult, err)
 
-	searchResult, err := conn.SearchWithPaging(&betterldap.SearchRequest{
-		BaseDN:       "DC=collaboration,DC=local",
-		Scope:        betterldap.ScopeWholeSubtree,
-		DerefAliases: betterldap.NeverDerefAliases,
-		Filter:       "(objectClass=*)",
-	}, 3)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	b := randomBytes(16)
+	result, err := conn.Modify(betterldap.ModifyRequest{
+		Object: "uid=Otto.Baumann,ou=Users,ou=LEJ-02,ou=DE,ou=Locations,dc=my-company,dc=com",
+		Changes: []betterldap.ModifyChanges{
+			{
+				Operation: betterldap.ModifyOperationReplace,
+				Modification: betterldap.PartialAttribute{
+					Name:   "displayName",
+					Values: []string{base32.StdEncoding.EncodeToString(b)},
+				},
+			},
+		},
+	})
 
-	if searchResult == nil {
-		fmt.Println("searchResult is nil, but got no error?")
-		return
-	}
-
-	for _, v := range searchResult.Entries {
-		fmt.Printf("DN: %s\n", v.DN)
-		for _, attribute := range v.Attributes {
-			fmt.Printf("  %s: %s\n", attribute.Name, attribute.String())
-		}
-		fmt.Println()
-	}
-
-	fmt.Println("Search result entries:", len(searchResult.Entries))
-	fmt.Println("Unbind:", conn.Unbind())
+	fmt.Println(result, err)
 }

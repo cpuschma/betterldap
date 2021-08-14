@@ -1,4 +1,4 @@
-package betterldap
+package ldap
 
 import (
 	"bytes"
@@ -11,6 +11,20 @@ import (
 	"unicode/utf8"
 
 	ber "github.com/go-asn1-ber/asn1-ber"
+)
+
+// Filter choices
+const (
+	FilterAnd             = 0
+	FilterOr              = 1
+	FilterNot             = 2
+	FilterEqualityMatch   = 3
+	FilterSubstrings      = 4
+	FilterGreaterOrEqual  = 5
+	FilterLessOrEqual     = 6
+	FilterPresent         = 7
+	FilterApproxMatch     = 8
+	FilterExtensibleMatch = 9
 )
 
 // FilterMap contains human readable descriptions of Filter choices
@@ -27,12 +41,27 @@ var FilterMap = map[uint64]string{
 	FilterExtensibleMatch: "Extensible Match",
 }
 
+// SubstringFilter options
+const (
+	FilterSubstringsInitial = 0
+	FilterSubstringsAny     = 1
+	FilterSubstringsFinal   = 2
+)
+
 // FilterSubstringsMap contains human readable descriptions of SubstringFilter choices
 var FilterSubstringsMap = map[uint64]string{
 	FilterSubstringsInitial: "Substrings Initial",
 	FilterSubstringsAny:     "Substrings Any",
 	FilterSubstringsFinal:   "Substrings Final",
 }
+
+// MatchingRuleAssertion choices
+const (
+	MatchingRuleAssertionMatchingRule = 1
+	MatchingRuleAssertionType         = 2
+	MatchingRuleAssertionMatchValue   = 3
+	MatchingRuleAssertionDNAttributes = 4
+)
 
 // MatchingRuleAssertionMap contains human readable descriptions of MatchingRuleAssertion choices
 var MatchingRuleAssertionMap = map[uint64]string{
@@ -42,12 +71,12 @@ var MatchingRuleAssertionMap = map[uint64]string{
 	MatchingRuleAssertionDNAttributes: "Matching Rule Assertion DN Attributes",
 }
 
-var symbolAny = []byte{'*'}
+var _SymbolAny = []byte{'*'}
 
 // CompileFilter converts a string representation of a filter into a BER-encoded packet
 func CompileFilter(filter string) (*ber.Packet, error) {
 	if len(filter) == 0 || filter[0] != '(' {
-		return nil, errors.New("ldap: filter does not start with an '('")
+		return nil, NewError(ErrorFilterCompile, errors.New("ldap: filter does not start with an '('"))
 	}
 	packet, pos, err := compileFilter(filter, 1)
 	if err != nil {
@@ -55,9 +84,9 @@ func CompileFilter(filter string) (*ber.Packet, error) {
 	}
 	switch {
 	case pos > len(filter):
-		return nil, errors.New("ldap: unexpected end of filter")
+		return nil, NewError(ErrorFilterCompile, errors.New("ldap: unexpected end of filter"))
 	case pos < len(filter):
-		return nil, errors.New("ldap: finished compiling filter with extra at end: " + fmt.Sprint(filter[pos:]))
+		return nil, NewError(ErrorFilterCompile, errors.New("ldap: finished compiling filter with extra at end: "+fmt.Sprint(filter[pos:])))
 	}
 	return packet, nil
 }
@@ -66,11 +95,11 @@ func CompileFilter(filter string) (*ber.Packet, error) {
 func DecompileFilter(packet *ber.Packet) (_ string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New("ldap: error decompiling filter")
+			err = NewError(ErrorFilterDecompile, errors.New("ldap: error decompiling filter"))
 		}
 	}()
 
-	buf := &strings.Builder{}
+	buf := bytes.NewBuffer(nil)
 	buf.WriteByte('(')
 	childStr := ""
 
@@ -106,32 +135,32 @@ func DecompileFilter(packet *ber.Packet) (_ string, err error) {
 		buf.WriteByte('=')
 		for i, child := range packet.Children[1].Children {
 			if i == 0 && child.Tag != FilterSubstringsInitial {
-				buf.Write(symbolAny)
+				buf.Write(_SymbolAny)
 			}
 			buf.WriteString(EscapeFilter(ber.DecodeString(child.Data.Bytes())))
 			if child.Tag != FilterSubstringsFinal {
-				buf.Write(symbolAny)
+				buf.Write(_SymbolAny)
 			}
 		}
 	case FilterEqualityMatch:
-		buf.Write(packet.Children[0].Data.Bytes())
+		buf.WriteString(ber.DecodeString(packet.Children[0].Data.Bytes()))
 		buf.WriteByte('=')
-		buf.Write(packet.Children[1].Data.Bytes())
+		buf.WriteString(EscapeFilter(ber.DecodeString(packet.Children[1].Data.Bytes())))
 	case FilterGreaterOrEqual:
-		buf.Write(packet.Children[0].Data.Bytes())
+		buf.WriteString(ber.DecodeString(packet.Children[0].Data.Bytes()))
 		buf.WriteString(">=")
-		buf.Write(packet.Children[1].Data.Bytes())
+		buf.WriteString(EscapeFilter(ber.DecodeString(packet.Children[1].Data.Bytes())))
 	case FilterLessOrEqual:
-		buf.Write(packet.Children[0].Data.Bytes())
+		buf.WriteString(ber.DecodeString(packet.Children[0].Data.Bytes()))
 		buf.WriteString("<=")
-		buf.Write(packet.Children[1].Data.Bytes())
+		buf.WriteString(EscapeFilter(ber.DecodeString(packet.Children[1].Data.Bytes())))
 	case FilterPresent:
-		buf.Write(packet.Data.Bytes())
+		buf.WriteString(ber.DecodeString(packet.Data.Bytes()))
 		buf.WriteString("=*")
 	case FilterApproxMatch:
-		buf.Write(packet.Children[0].Data.Bytes())
+		buf.WriteString(ber.DecodeString(packet.Children[0].Data.Bytes()))
 		buf.WriteString("~=")
-		buf.WriteString(EscapeFilter(string(packet.Children[1].Data.Bytes())))
+		buf.WriteString(EscapeFilter(ber.DecodeString(packet.Children[1].Data.Bytes())))
 	case FilterExtensibleMatch:
 		attr := ""
 		dnAttributes := false
@@ -158,7 +187,7 @@ func DecompileFilter(packet *ber.Packet) (_ string, err error) {
 			buf.WriteString(":dn")
 		}
 		if len(matchingRule) > 0 {
-			buf.WriteByte(':')
+			buf.WriteString(":")
 			buf.WriteString(matchingRule)
 		}
 		buf.WriteString(":=")
@@ -180,7 +209,7 @@ func compileFilterSet(filter string, pos int, parent *ber.Packet) (int, error) {
 		parent.AppendChild(child)
 	}
 	if pos == len(filter) {
-		return pos, errors.New("ldap: unexpected end of filter")
+		return pos, NewError(ErrorFilterCompile, errors.New("ldap: unexpected end of filter"))
 	}
 
 	return pos + 1, nil
@@ -194,7 +223,7 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New("ldap: error compiling filter")
+			err = NewError(ErrorFilterCompile, errors.New("ldap: error compiling filter"))
 		}
 	}()
 	newPos := pos
@@ -203,7 +232,7 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 
 	switch currentRune {
 	case utf8.RuneError:
-		return nil, 0, fmt.Errorf("ldap: error reading rune at position %d", newPos)
+		return nil, 0, NewError(ErrorFilterCompile, fmt.Errorf("ldap: error reading rune at position %d", newPos))
 	case '(':
 		packet, newPos, err = compileFilter(filter, pos+currentWidth)
 		newPos++
@@ -242,7 +271,7 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 				break
 			}
 			if currentRune == utf8.RuneError {
-				return packet, newPos, fmt.Errorf("ldap: error reading rune at position %d", newPos)
+				return packet, newPos, NewError(ErrorFilterCompile, fmt.Errorf("ldap: error reading rune at position %d", newPos))
 			}
 
 			switch state {
@@ -326,11 +355,11 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 		}
 
 		if newPos == len(filter) {
-			err = errors.New("ldap: unexpected end of filter")
+			err = NewError(ErrorFilterCompile, errors.New("ldap: unexpected end of filter"))
 			return packet, newPos, err
 		}
 		if packet == nil {
-			err = errors.New("ldap: error parsing filter")
+			err = NewError(ErrorFilterCompile, errors.New("ldap: error parsing filter"))
 			return packet, newPos, err
 		}
 
@@ -365,14 +394,14 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 				packet.AppendChild(ber.NewBoolean(ber.ClassContext, ber.TypePrimitive, MatchingRuleAssertionDNAttributes, extensibleDNAttributes, MatchingRuleAssertionMap[MatchingRuleAssertionDNAttributes]))
 			}
 
-		case packet.Tag == FilterEqualityMatch && bytes.Equal(condition.Bytes(), symbolAny):
+		case packet.Tag == FilterEqualityMatch && bytes.Equal(condition.Bytes(), _SymbolAny):
 			packet = ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterPresent, attribute.String(), FilterMap[FilterPresent])
-		case packet.Tag == FilterEqualityMatch && bytes.Contains(condition.Bytes(), symbolAny):
+		case packet.Tag == FilterEqualityMatch && bytes.Index(condition.Bytes(), _SymbolAny) > -1:
 			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute.String(), "Attribute"))
 			packet.Tag = FilterSubstrings
 			packet.Description = FilterMap[uint64(packet.Tag)]
 			seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Substrings")
-			parts := bytes.Split(condition.Bytes(), symbolAny)
+			parts := bytes.Split(condition.Bytes(), _SymbolAny)
 			for i, part := range parts {
 				if len(part) == 0 {
 					continue
@@ -423,9 +452,9 @@ func decodeEscapedSymbols(src []byte) (string, error) {
 		if err == io.EOF {
 			return buffer.String(), nil
 		} else if err != nil {
-			return "", fmt.Errorf("ldap: failed to read filter: %v", err)
+			return "", NewError(ErrorFilterCompile, fmt.Errorf("ldap: failed to read filter: %v", err))
 		} else if runeVal == unicode.ReplacementChar {
-			return "", fmt.Errorf("ldap: error reading rune at position %d", offset)
+			return "", NewError(ErrorFilterCompile, fmt.Errorf("ldap: error reading rune at position %d", offset))
 		}
 
 		if runeVal == '\\' {
@@ -439,13 +468,13 @@ func decodeEscapedSymbols(src []byte) (string, error) {
 
 			if _, err := io.ReadFull(reader, byteHex); err != nil {
 				if err == io.ErrUnexpectedEOF {
-					return "", errors.New("ldap: missing characters for escape in filter")
+					return "", NewError(ErrorFilterCompile, errors.New("ldap: missing characters for escape in filter"))
 				}
-				return "", fmt.Errorf("ldap: invalid characters for escape in filter: %v", err)
+				return "", NewError(ErrorFilterCompile, fmt.Errorf("ldap: invalid characters for escape in filter: %v", err))
 			}
 
 			if _, err := hexpac.Decode(byteVal, byteHex); err != nil {
-				return "", fmt.Errorf("ldap: invalid characters for escape in filter: %v", err)
+				return "", NewError(ErrorFilterCompile, fmt.Errorf("ldap: invalid characters for escape in filter: %v", err))
 			}
 
 			buffer.Write(byteVal)
